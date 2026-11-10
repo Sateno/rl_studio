@@ -1,3 +1,28 @@
+# RL Studio
+
+Tools and examples for advanced educational reinforcement-learning videos, based on [Manim Voiceover v0.4.0](https://github.com/ManimCommunity/manim-voiceover/tree/v0.4.0).
+
+The initial baseline includes a reproducible WSL2/Ubuntu setup, Conda Python 3.12, uv-locked dependencies, focused upstream tests, and a short mathematical lesson with local narration. The Python package remains `manim-voiceover` / `manim_voiceover`; the upstream source and MIT notices are preserved.
+
+**Baseline status:** 127 tests pass with 97.7% coverage; dependency-audit and validation-runner findings remain open. See [initial baseline checks](local_setup/baseline-checks.md).
+
+See [local setup and validation](LOCAL_SETUP.md) for the tested environment, commands and limitations. From PowerShell in the checkout:
+
+```powershell
+.\local.ps1 status
+.\local.ps1 test
+.\local.ps1 render
+.\local.ps1 shell
+```
+
+Scenes and recording fixtures are under `examples/rl_lessons/`. Rendered media and local environment files are excluded from Git. The proposed S01 prerecorded-audio service is not implemented in this baseline.
+
+The upstream release-publishing workflow is restricted to the upstream repository. RL Studio does not publish the `manim-voiceover` package to PyPI.
+
+## Upstream project
+
+The original project overview follows; its badges and links refer to Manim Voiceover.
+
 # Manim Voiceover
 
 <p>

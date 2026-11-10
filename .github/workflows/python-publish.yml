@@ -17,6 +17,8 @@ permissions:
 
 jobs:
   deploy:
+    # A derived lesson project must not publish the upstream package.
+    if: github.repository == 'ManimCommunity/manim-voiceover'
 
     runs-on: ubuntu-latest
 

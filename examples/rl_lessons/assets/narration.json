@@ -1,0 +1,20 @@
+{
+  "generator": "Windows System.Speech (offline)",
+  "sections": [
+    "Which uncertain choice is better? Suppose one action gives a reward of two every time, while another gives four with probability three quarters, and zero otherwise.",
+    "For the uncertain action, we multiply each possible reward by its probability, then add the results.",
+    "One quarter times zero, plus three quarters times four, gives an expected reward of three.",
+    "Three is greater than two. A decision maker maximizing expected immediate reward therefore prefers the uncertain action. This comparison is about averages, not a guarantee for any single trial."
+  ],
+  "durations": [
+    12.357777777777779,
+    8.083265306122449,
+    7.6033560090702945,
+    14.67687074829932
+  ],
+  "duration": 42.721269841269844,
+  "take_transcript": "This is the approved local recording for R L Studio. The final words are complete.",
+  "voice": "Microsoft Zira Desktop",
+  "voice_rate": -1,
+  "take_generator": "espeak-ng (original A/B test fixtures retained)"
+}

@@ -1,0 +1,12 @@
+build-essential=12.10ubuntu1
+dvisvgm=3.2.1+ds-1build1
+espeak-ng=1.51+dfsg-12build1
+ffmpeg=7:6.1.1-3ubuntu5
+fonts-dejavu-core=2.37-8
+libcairo2-dev=1.18.0-3build1
+libpango1.0-dev=1.52.1+ds-1build1
+pkg-config=1.8.1-2build1
+sox=14.4.2+git20190427-4build4
+texlive-fonts-recommended=2023.20240207-1
+texlive-latex-base=2023.20240207-1
+texlive-latex-extra=2023.20240207-1

@@ -142,3 +142,8 @@ dist/
 
 /media_dir.txt
 # ^TODO: Remove the need for this with a proper config file
+
+# Machine-specific setup checkpoint
+/LOCAL_SETUP_STATUS.json
+# Generated mutation-test workspace
+/mutants/
