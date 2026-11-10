@@ -2,7 +2,7 @@
 
 The local baseline is working under **WSL2 / Ubuntu 24.04**, using Conda Python 3.12.16 and uv 0.13.7. The checkout is Manim Voiceover v0.4.0 at `51d788b768d04676b4596c42c5dce2cda9740e11`.
 
-Upstream package files, names, license and `uv.lock` are retained. RL Studio adds the lesson fixtures and local setup helpers; feature implementation follows on separate branches.
+Upstream package files, names and license are retained; RL Studio maintains the dependency lockfile. RL Studio adds the lesson fixtures and local setup helpers; feature implementation follows on separate branches.
 
 ## Daily commands
 
@@ -30,10 +30,10 @@ The shell opens in this checkout with the Linux project environment active. Type
 - Linux Conda installation: `$HOME/miniforge3`, matching the Conda/Miniforge workflow already used on Windows.
 - Conda environment `rl_studio_python`: provides Python 3.12.16 and uv 0.13.7.
 - uv environment: `$HOME/.virtualenvs/rl_studio`. Keeping it in Linux storage avoids putting environment files on the mounted Windows drive.
-- Project packages: the existing `uv.lock`, installed with `--frozen --no-dev --extra translate`. The small translation extra is needed for an existing mocked core test; no translation service is called.
+- Project packages: the maintained `uv.lock`, installed with `--frozen --no-dev --extra translate`. The small translation extra is needed for an existing mocked core test; no translation service is called.
 - Test runner: pytest 9.0.3, supplied by uv's `--with` environment. `sync` prepares its cache; `test` and `render` then use `--offline`.
 
-Conda supplies the interpreter; uv owns the project packages. The full cloud-service/dev extra and transcription models are intentionally not installed for this baseline.
+Conda supplies the interpreter; uv owns the project packages. The daily environment omits the full development dependencies and transcription models. A separate `rl_studio_ci` environment holds the frozen development dependencies for the complete checks, including Slophammer.
 
 ## Reproduction
 
@@ -63,7 +63,7 @@ The explicit Conda specification is for Linux x86_64. `local_setup/native-packag
 - The original eSpeak baseline also passed rendering and media verification inside a Linux network namespace with networking disabled. The current Windows-voice render uses the same offline rendering pipeline.
 - The 42.721-second source narration fits within the video. The final voiced second has 0.9939 normalized correlation with the decoded MP4 audio; the check requires more than 0.97. This verifies preservation of the ending through AAC encoding, rather than a human listening review.
 - Four video frames were visually inspected for legibility and clipping. The displayed calculation is `0.25 * 0 + 0.75 * 4 = 3`, compared with a certain reward of 2.
-- The new Python helper files and example pass Ruff checks. The broader pre-publication suite was subsequently run; see `local_setup/baseline-checks.md` for passing checks and unresolved gates. Alignerr environment verification is still separate.
+- The new Python helper files and example pass Ruff checks. The broader pre-publication suite was subsequently run; see `local_setup/baseline-checks.md` for the full passing checks. Alignerr environment verification is still separate.
 
 Reports are in `media/local_validation/`, which is already ignored by Git. Benign upstream pydub deprecation warnings and a Manim muxer unused-option warning were observed; stream/duration/audio checks passed.
 

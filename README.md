@@ -4,7 +4,7 @@ Tools and examples for advanced educational reinforcement-learning videos, based
 
 The initial baseline includes a reproducible WSL2/Ubuntu setup, Conda Python 3.12, uv-locked dependencies, focused upstream tests, and a short mathematical lesson with local narration. The Python package remains `manim-voiceover` / `manim_voiceover`; the upstream source and MIT notices are preserved.
 
-**Baseline status:** 127 tests pass with 97.7% coverage; dependency-audit and validation-runner findings remain open. See [initial baseline checks](local_setup/baseline-checks.md).
+**Validation status:** 127 tests pass with 97.7% coverage, all 3,207 mutations are killed, the dependency audit reports no known vulnerabilities, and all quality checks pass. See [baseline validation](local_setup/baseline-checks.md).
 
 See [local setup and validation](LOCAL_SETUP.md) for the tested environment, commands and limitations. From PowerShell in the checkout:
 

@@ -1,43 +1,46 @@
-# Initial baseline checks
+# Baseline validation
 
-The published baseline preserves Manim Voiceover v0.4.0 package code and its lockfile. These checks were run locally in WSL2/Ubuntu 24.04 using a separate `rl_studio_ci` uv environment with the full frozen development dependencies. The smaller daily-work environment remains separate.
+The dependency and validation cleanup preserves the Manim Voiceover v0.4.0 package implementation and API. Its dependencies are now maintained in RL Studio's lockfile. Verification was performed in WSL2/Ubuntu 24.04 with Python 3.12.16 and uv 0.13.7.
 
-## Passing checks
+## Results
 
-- Ruff formatting and lint: passed.
-- `ty check src/manim_voiceover`: passed.
-- Strict mypy: passed for 23 source files.
-- Full pytest suite: **127 passed**, **97.70% coverage**, exceeding the 85% requirement.
-- Slophammer duplication check: zero candidates.
-- Slophammer structural check: no findings.
-- Local mathematical video with Windows Zira narration: rendered and verified; details in `LOCAL_SETUP.md`.
+- Lockfile consistency, Ruff formatting and lint: passed.
+- ty and strict mypy: passed.
+- Full pytest suite: **127 passed**, **97.70% coverage** (85% required).
+- Full mutation run with two workers: **3,207 killed**, zero survivors, timeouts or unchecked mutants. The mutation gate passed.
+- Dependency audit: **zero reported vulnerabilities**, across 184 dependency records. Audit time: `2026-11-10T14:13:41.188080+00:00`.
+- Slophammer duplication, structural and execution checks: passed with no findings.
+- The local Windows Zira lesson rendered with networking disabled: 43.467 seconds, with final spoken-audio correlation 0.9939. The existing WAV fixtures and lesson wording were retained.
 
-## Unresolved checks
+## Changes that cleared the failures
 
-1. **Dependency audit:** `pip-audit` reports 181 advisory rows across 15 inherited dependency packages. Rows include duplicate advisory identifiers; this is not a claim of 181 distinct exploitable issues. See `dependency-audit.txt` for the observed versions and reported fixes. The lockfile has not been silently upgraded and the audit gate remains enabled.
-2. **Mutation gate:** the complete four-worker run tested 3,207 mutations: 3,198 killed and 9 timed out. A one-worker retry killed the nine timed-out cases, but that targeted invocation regenerated the result set and marked the other 3,198 cases unchecked. A fresh complete run with controlled concurrency is needed before declaring this gate passing. No package source or tests were changed to suppress findings.
-3. **Slophammer execution:** `slophammer-py@0.3.0 check . --execute` failed because its launched type checker could not resolve the `pip` import. Direct ty and mypy both passed in the project CI environment. The checker environment needs investigation; no type-check rule was weakened.
+The audit initially flagged 15 inherited packages. Their locked versions were updated, including related dependencies needed by the resolver. Pylint's old major-version cap was raised to permit a patched release; minimum pip and GitPython versions were also raised. Updating setuptools refreshed some optional transcription/GPU dependency entries in the universal lockfile; those packages and models are not installed by the daily setup.
 
-These are recorded starting conditions, not a fully passing CI claim. Prioritize dependency and validation-runner remediation before S01 feature work. Public repository access does not itself establish Alignerr task eligibility or platform compatibility.
+Slophammer 0.3.0 is now a pinned development dependency and runs through `uv run`, inside the same project environment as ty, mypy and the package under test. This fixes the isolated-tool environment's inability to resolve `pip`. The checker needs Python 3.12+, so its dependency has a Python-version marker; the library retains Python 3.11+ support.
 
-## Reproduction of the broader checks
+Mutation testing uses two workers, matching GitHub CI. No tests, type-check rules, audit checks, coverage thresholds or mutation gates were weakened. No S01 recording service was implemented.
 
-Install Ubuntu's `portaudio19-dev` in addition to the native dependencies in `LOCAL_SETUP.md`, then use a separate environment:
+## Full verification commands
+
+Install `portaudio19-dev` in addition to the native tools in `LOCAL_SETUP.md`. Run the full suite with Linux Python 3.12+:
 
 ```bash
 export UV_PROJECT_ENVIRONMENT="$HOME/.virtualenvs/rl_studio_ci"
 export UV_LINK_MODE=copy
 uv sync --dev --frozen --python "$HOME/miniforge3/envs/rl_studio_python/bin/python"
 export PATH="$UV_PROJECT_ENVIRONMENT/bin:$PATH"
+uv lock --check
 uv run ruff format --check .
 uv run ruff check .
 uv run ty check src/manim_voiceover
 uv run mypy
 uv run pytest --cov=manim_voiceover --cov-fail-under=85
-uvx slophammer-py@0.3.0 dry .
-uv run mutmut run --max-children 1
+uv run slophammer-py dry .
+uv run mutmut run --max-children 2
 uv run python scripts/check_mutmut_results.py
 uv run pip-audit
-uvx slophammer-py@0.3.0 check .
-uvx slophammer-py@0.3.0 check . --execute
+uv run slophammer-py check .
+uv run slophammer-py check . --execute
 ```
+
+The smaller daily environment remains separate. `local.ps1 sync` installs its locked runtime dependencies; `test` and `render` then run offline. Alignerr platform verification and task eligibility remain separate from these repository checks.
