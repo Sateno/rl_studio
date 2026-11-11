@@ -156,6 +156,7 @@ show_missing = true
 
 [tool.mutmut]
 source_paths = ["src/manim_voiceover"]
+also_copy = ["fixtures/"]
 
 [tool.mypy]
 python_version = "3.11"

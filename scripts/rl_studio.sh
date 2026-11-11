@@ -15,7 +15,7 @@ case "${1:-status}" in
     mkdir -p media/local_validation
     uv run --offline "${args[@]}" --with pytest==9.0.3 python -m pytest -q \
       tests/test_install.py tests/test_cache_models.py tests/test_core_behavior.py \
-      tests/test_more_behavior.py tests/test_mutation_contracts.py tests/test_mutmut_result_checker.py \
+      tests/test_more_behavior.py tests/test_mutation_contracts.py tests/test_mutmut_result_checker.py tests/test_local_wav*.py \
       2>&1 | tee media/local_validation/pytest.log
     ;;
   render)
