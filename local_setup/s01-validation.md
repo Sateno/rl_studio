@@ -37,3 +37,7 @@ Local logs are in the ignored `media/s01-integration-checks/` folder. Generated 
 ## Boundaries of this verification
 
 This reran setup after the final service changes with a fresh `.venv`; it did not use an empty uv cache or reinstall the operating system. It exercised the system Pango headers, not the project-local fallback or its failure branches. It did not add native Windows/macOS or other Python-version validation, large-file/concurrent-render experiments, an independent multi-database security review, or a new human listening review. The other known limitations remain documented in [the S01 guide](../docs/s01.md); the [task record](../docs/s01-task-record.md) preserves the earlier sandbox evidence and its original 135-test count.
+
+## CI runner setup
+
+Two attempts on the inherited `ubuntu-latest` runner (Ubuntu 26.04) could not resolve the Ubuntu package servers and stalled before Python installation or tests. CI now explicitly uses Ubuntu 24.04 to match the tested environment, stops dependency installation after five minutes, and treats incomplete package-index downloads as errors. The job has a 30-minute limit. All existing validation steps remain enabled.

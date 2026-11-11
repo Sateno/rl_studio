@@ -11,7 +11,8 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
 
     steps:
     - uses: actions/checkout@v6
@@ -23,9 +24,10 @@ jobs:
       with:
         python-version: "3.12"
     - name: Install system dependencies
+      timeout-minutes: 5
       run: |
-        sudo apt-get update
-        sudo apt-get install libcairo2-dev libpango1.0-dev ffmpeg portaudio19-dev
+        sudo apt-get -o APT::Update::Error-Mode=any -o Acquire::Retries=2 -o Acquire::http::Timeout=15 -o Acquire::https::Timeout=15 update
+        sudo apt-get install -y libcairo2-dev libpango1.0-dev ffmpeg portaudio19-dev
     - name: Install Python dependencies
       run: uv sync --dev --frozen
     - name: Add virtual environment tools to PATH
