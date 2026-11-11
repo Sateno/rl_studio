@@ -2,7 +2,7 @@
 
 Tools and examples for advanced educational reinforcement-learning videos, based on [Manim Voiceover v0.4.0](https://github.com/ManimCommunity/manim-voiceover/tree/v0.4.0).
 
-The initial baseline includes a reproducible WSL2/Ubuntu setup, Conda Python 3.12, uv-locked dependencies, focused upstream tests, and a short mathematical lesson with local narration. The Python package remains `manim-voiceover` / `manim_voiceover`; the upstream source and MIT notices are preserved.
+The Windows trunk runs natively with Conda Python 3.12 and uv. Alignerr task work uses the separate `dev` branch and its Linux setup. The Python package remains `manim-voiceover` / `manim_voiceover`; the upstream source and MIT notices are preserved.
 
 **Validation status:** S01 passed 237 full-suite tests (97.85% coverage), all 3,468 mutation checks, formatting, lint, type checks, the dependency audit and Slophammer. Its focused workflow passed 158 tests and both verified A/B renders. See [S01 integration validation](local_setup/s01-validation.md), [baseline validation](local_setup/baseline-checks.md) and the historical [task-sandbox record](docs/s01-task-record.md).
 
@@ -11,6 +11,7 @@ See [local setup and validation](LOCAL_SETUP.md) for the tested environment, com
 ```powershell
 .\local.ps1 status
 .\local.ps1 test
+.\local.ps1 s01
 .\local.ps1 render
 .\local.ps1 shell
 ```
