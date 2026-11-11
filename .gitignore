@@ -147,3 +147,7 @@ dist/
 /LOCAL_SETUP_STATUS.json
 # Generated mutation-test workspace
 /mutants/
+
+.ruff_cache/
+
+/.s01-sysroot/

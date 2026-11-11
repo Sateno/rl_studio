@@ -4,7 +4,7 @@ Tools and examples for advanced educational reinforcement-learning videos, based
 
 The initial baseline includes a reproducible WSL2/Ubuntu setup, Conda Python 3.12, uv-locked dependencies, focused upstream tests, and a short mathematical lesson with local narration. The Python package remains `manim-voiceover` / `manim_voiceover`; the upstream source and MIT notices are preserved.
 
-**Validation status:** 127 tests pass with 97.7% coverage, all 3,207 mutations are killed, the dependency audit reports no known vulnerabilities, and all quality checks pass. See [baseline validation](local_setup/baseline-checks.md).
+**Validation status:** S01 passed 237 full-suite tests (97.85% coverage), all 3,468 mutation checks, formatting, lint, type checks, the dependency audit and Slophammer. Its focused workflow passed 158 tests and both verified A/B renders. See [S01 integration validation](local_setup/s01-validation.md), [baseline validation](local_setup/baseline-checks.md) and the historical [task-sandbox record](docs/s01-task-record.md).
 
 See [local setup and validation](LOCAL_SETUP.md) for the tested environment, commands and limitations. From PowerShell in the checkout:
 
@@ -15,7 +15,7 @@ See [local setup and validation](LOCAL_SETUP.md) for the tested environment, com
 .\local.ps1 shell
 ```
 
-Scenes and recording fixtures are under `examples/rl_lessons/`. Rendered media and local environment files are excluded from Git. The proposed S01 prerecorded-audio service is not implemented in this baseline.
+Scenes and recording fixtures are under `examples/rl_lessons/`. Rendered media and local environment files are excluded from Git. S01 adds `LocalWavService` for mono/stereo 16-bit PCM WAV narration. See the [S01 workflow, setup and limitations](docs/s01.md).
 
 The upstream release-publishing workflow is restricted to the upstream repository. RL Studio does not publish the `manim-voiceover` package to PyPI.
 

@@ -44,7 +44,7 @@ jobs:
       run: uv run slophammer-py dry .
     - name: Check mutations
       run: |
-        uv run mutmut run --max-children 2
+        uv run mutmut run --max-children 1
         uv run python scripts/check_mutmut_results.py
         rm -rf mutants
     - name: Audit dependencies
