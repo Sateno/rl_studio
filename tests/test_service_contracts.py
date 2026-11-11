@@ -153,12 +153,12 @@ def test_base_set_transcription_loads_model_and_preserves_kwargs(tmp_path, monke
     assert service.transcription_kwargs == {"temperature": 0}
 
 
-def test_base_default_cache_dir_and_directory_creation(monkeypatch):
+def test_base_default_cache_dir_and_directory_creation(tmp_path, monkeypatch):
     from tests.test_core_behavior import DummyService
 
     exists_calls = []
     makedirs_calls = []
-    monkeypatch.setattr("manim_voiceover.services.base.config.media_dir", "/media")
+    monkeypatch.setattr("manim_voiceover.services.base.config.media_dir", str(tmp_path))
     monkeypatch.setattr("manim_voiceover.services.base.os.path.exists", lambda path: exists_calls.append(path) or False)
     monkeypatch.setattr("manim_voiceover.services.base.os.makedirs", lambda path: makedirs_calls.append(path))
 
@@ -166,7 +166,7 @@ def test_base_default_cache_dir_and_directory_creation(monkeypatch):
     service.set_transcription = lambda model, kwargs: setattr(service, "transcription_kwargs", kwargs)
     service.__class__.__mro__[1].__init__(service)
 
-    assert str(service.cache_dir) == "/media/voiceovers"
+    assert service.cache_dir == tmp_path / "voiceovers"
     assert service.transcription_model is None
     assert exists_calls == [service.cache_dir]
     assert makedirs_calls == [service.cache_dir]

@@ -151,3 +151,4 @@ dist/
 .ruff_cache/
 
 /.s01-sysroot/
+/.venv-windows/
