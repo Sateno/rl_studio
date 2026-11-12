@@ -1,6 +1,7 @@
 param(
-    [ValidateSet('sync', 'test', 'render', 's01', 'shell', 'status')]
-    [string]$Action = 'status'
+    [ValidateSet('sync', 'test', 'render', 's01', 's02', 'shell', 'status')]
+    [string]$Action = 'status',
+    [string]$CueManifest
 )
 $ErrorActionPreference = 'Stop'
 $condaEnv = 'rl_studio_win'
@@ -11,7 +12,9 @@ if ($env:CONDA_DEFAULT_ENV -ne $condaEnv) {
     if (-not (Test-Path -LiteralPath $condaExe)) {
         throw 'Open an Anaconda or Miniforge Prompt and run this launcher again.'
     }
-    & $condaExe run --no-capture-output -n $condaEnv powershell.exe -NoProfile -File $PSCommandPath $Action
+    $launcherArgs = @($Action)
+    if ($CueManifest) { $launcherArgs += @('-CueManifest', $CueManifest) }
+    & $condaExe run --no-capture-output -n $condaEnv powershell.exe -NoProfile -File $PSCommandPath @launcherArgs
     exit $LASTEXITCODE
 }
 
@@ -45,7 +48,8 @@ try {
             Invoke-Checked $python @('-m', 'pytest', '-q',
                 'tests/test_install.py', 'tests/test_cache_models.py', 'tests/test_core_behavior.py',
                 'tests/test_more_behavior.py', 'tests/test_mutation_contracts.py', 'tests/test_mutmut_result_checker.py',
-                'tests/test_local_wav_service.py', 'tests/test_local_wav_contracts.py')
+                'tests/test_local_wav_service.py', 'tests/test_local_wav_contracts.py',
+                'tests/test_s02_cue_bindings.py', 'tests/test_s02_expected_reward.py', 'tests/test_s02_verifier.py')
         }
         'render' {
             Invoke-Checked $python @('scripts/prepare_local_audio.py')
@@ -68,6 +72,20 @@ try {
                 }
             } finally {
                 $env:S01_AUDIO = $previousAudio
+            }
+        }
+        's02' {
+            $manifest = if ($CueManifest) { $CueManifest } else { 'examples/rl_lessons/assets/expected_reward_cues.json' }
+            $manifest = (Resolve-Path -LiteralPath $manifest).ProviderPath
+            $previousManifest = $env:S02_CUE_MANIFEST
+            try {
+                $env:S02_CUE_MANIFEST = $manifest
+                $output = [IO.Path]::GetFileNameWithoutExtension($manifest)
+                Invoke-Checked $python @('-m', 'manim', '--renderer', 'cairo', '-ql', '--disable_caching',
+                    '--config_file', 'local-manim.cfg', '--media_dir', 'media/s02-windows', '-o', $output,
+                    'examples/rl_lessons/expected_reward_cues.py', 'ExpectedRewardCues')
+            } finally {
+                $env:S02_CUE_MANIFEST = $previousManifest
             }
         }
         'shell' {

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "cues": [
+    {"id": "question", "wav": "section_0.wav"},
+    {"id": "calculation", "wav": "section_2.wav"},
+    {"id": "decision", "wav": "section_3.wav"}
+  ]
+}

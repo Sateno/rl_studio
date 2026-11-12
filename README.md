@@ -12,11 +12,12 @@ See [local setup and validation](LOCAL_SETUP.md) for the tested environment, com
 .\local.ps1 status
 .\local.ps1 test
 .\local.ps1 s01
+.\local.ps1 s02
 .\local.ps1 render
 .\local.ps1 shell
 ```
 
-Scenes and recording fixtures are under `examples/rl_lessons/`. Rendered media and local environment files are excluded from Git. S01 adds `LocalWavService` for mono/stereo 16-bit PCM WAV narration. See the [S01 workflow, setup and limitations](docs/s01.md).
+Scenes and recording fixtures are under `examples/rl_lessons/`. Rendered media and local environment files are excluded from Git. S01 adds `LocalWavService` for mono/stereo 16-bit PCM WAV narration. See the [S01 WAV workflow](docs/s01.md) and the [S02 cue and render workflow](docs/s02.md).
 
 The upstream release-publishing workflow is restricted to the upstream repository. RL Studio does not publish the `manim-voiceover` package to PyPI.
 

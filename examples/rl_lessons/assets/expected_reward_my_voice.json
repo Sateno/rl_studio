@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "cues": [
+    {
+      "id": "question",
+      "wav": "section_0.wav"
+    },
+    {
+      "id": "calculation",
+      "wav": "calculation_my_voice.wav"
+    },
+    {
+      "id": "decision",
+      "wav": "section_3.wav"
+    }
+  ]
+}
