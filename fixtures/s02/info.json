@@ -1,0 +1,36 @@
+{
+  "status": "CANDIDATE - generated for testing, pending owner review and approval",
+  "calculation_alt.wav": {
+    "sha256": "891215f01b289d0bb3272626d31ab3668638ed224187524ce5e76f9dd848e8d9",
+    "channels": 1,
+    "sample_width_bytes": 2,
+    "sample_rate_hz": 22050,
+    "frames": 132300,
+    "seconds": 6.0,
+    "chunks": [
+      "fmt ",
+      "data"
+    ]
+  },
+  "calculation_alt.txt": {
+    "sha256": "630689fb2f66ef1f3a7d1a11cad2afca8045b17450543fd33e3f45e89889e933",
+    "text": "One quarter times zero, plus three quarters times four, gives an expected reward of three"
+  },
+  "generation": {
+    "engine": "FFmpeg 6.1.1-3ubuntu5 'flite' audio source filter (built with --enable-libflite), libflite1 2.2-6build3",
+    "voice": "slt (CMU US English, female; 16000 Hz native)",
+    "command": "ffmpeg -f lavfi -i \"flite=textfile=fixtures/s02/calculation_alt.txt:voice=slt\" -ar 22050 -ac 1 -c:a pcm_s16le -fflags +bitexact -flags:a +bitexact -map_metadata -1 fixtures/s02/calculation_alt.wav",
+    "processing": "Sample-rate conversion 16000 -> 22050 Hz by FFmpeg only. No padding, no trimming, no tempo or pitch change: the native 16000 Hz output is also exactly 6.000000 s (96000 samples).",
+    "deterministic": "Regenerating with the same command gives a byte-identical file."
+  },
+  "comparison_with_section_2": {
+    "section_2_sha256": "23a264b385bab216e832b3d7b98e9b09e96237b43beeafc063284ae1874f20b2",
+    "section_2_seconds": 7.303356009070295,
+    "difference_seconds": -1.3033560090702947,
+    "difference_frames_at_15_fps": -19.55034013605442
+  },
+  "notes": [
+    "The spoken text is the requested sentence without a final period; the scene's calculation transcript is unchanged.",
+    "The voice (Flite slt) differs from the Microsoft Zira voice of sections 0 and 3."
+  ]
+}
