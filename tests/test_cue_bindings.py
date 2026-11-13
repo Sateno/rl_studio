@@ -1,12 +1,12 @@
-"""S02: stable cue IDs bound to local WAV recordings by a version 1 JSON manifest.
+"""Cue Bindings: stable cue IDs bound to local WAV recordings by a version 1 JSON manifest.
 
 Sections:
 - manifest format and structure;
 - portable WAV base names, checked for POSIX and Windows meaning on any host;
 - symbolic-link containment on the host file system;
 - cue selection (the scene's order, repeated requests, unknown/duplicate IDs, unused and shared bindings)
-  and reuse of S01's recording validation;
-- playback and S01 caching across a calculation rebinding, A -> B -> B, with one shared cache;
+  and reuse of the local WAV recording validation;
+- playback and local WAV caching across a calculation rebinding, A -> B -> B, with one shared cache;
 - the repository's lesson recordings, and pins that keep the original lesson unchanged.
 
 Most playback tests use a MOCK scene (as in test_local_wav_service.py), which records
@@ -141,7 +141,7 @@ def tree_identity(directory):
 
 
 def record_cache_writes(monkeypatch):
-    """Record every cached copy that S01 writes, while still writing it."""
+    """Record every cached copy that LocalWavService writes, while still writing it."""
     writes = []
     original = local_wav._write_copy
 
@@ -463,7 +463,7 @@ UNSAFE_REASONS = {
 @pytest.mark.parametrize("name", VALID_NAMES)
 @pytest.mark.parametrize(
     "flavour, directory",
-    [(PurePosixPath, "/srv/lesson/assets"), (PureWindowsPath, "C:/Users/me/lesson/assets")],
+    [(PurePosixPath, "/srv/lesson/assets"), (PureWindowsPath, "C:/Fixtures/lesson/assets")],
     ids=["posix", "windows"],
 )
 def test_valid_name_is_one_file_in_the_manifest_directory_on_posix_and_windows(name, flavour, directory):
@@ -602,7 +602,7 @@ def test_manifest_directory_reached_through_a_symlink_is_allowed(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# Cue selection and S01 recording validation
+# Cue selection and local WAV recording validation
 # ---------------------------------------------------------------------------
 
 
@@ -702,7 +702,7 @@ def test_two_cues_may_share_one_recording(lesson, cache_dir):
     assert scene.sounds[0].read_bytes() == scene.sounds[2].read_bytes() == source
 
 
-def test_missing_recording_uses_s01_error_with_the_cue_named(lesson):
+def test_missing_recording_uses_local_wav_error_with_the_cue_named(lesson):
     (lesson.directory / "calculation.wav").unlink()
     manifest = load_cue_manifest(lesson.manifest)
 
@@ -723,7 +723,7 @@ def test_directory_instead_of_recording_is_rejected(lesson):
 
 
 @pytest.mark.parametrize("case", INVALID_RECORDINGS)
-def test_invalid_recording_uses_s01_validation(lesson, case):
+def test_invalid_recording_uses_local_wav_validation(lesson, case):
     content, error_type, message = INVALID_RECORDINGS[case]
     (lesson.directory / "decision.wav").write_bytes(content)
     manifest = load_cue_manifest(lesson.manifest)
@@ -732,12 +732,12 @@ def test_invalid_recording_uses_s01_validation(lesson, case):
         manifest.resolve(ORDER)
 
     assert error.value.__notes__ == [f"Cue 'decision' in cue manifest {lesson.manifest}"]
-    with pytest.raises(error_type, match=message):  # exactly what S01 reports for the same file
+    with pytest.raises(error_type, match=message):  # exactly what LocalWavService reports for the same file
         LocalWavService(lesson.directory / "decision.wav", cache_dir=lesson.directory.parent / "unused-cache")
 
 
 @pytest.mark.parametrize("layout", FFMPEG_LAYOUTS)
-def test_recording_that_needs_missing_ffmpeg_uses_s01_dependency_error(lesson, monkeypatch, layout):
+def test_recording_that_needs_missing_ffmpeg_uses_local_wav_dependency_error(lesson, monkeypatch, layout):
     (lesson.directory / "question.wav").write_bytes(FFMPEG_LAYOUTS[layout](tone_wav(1)))
     manifest = load_cue_manifest(lesson.manifest)
 
@@ -770,7 +770,7 @@ def test_loading_and_resolving_only_read_files(lesson):
 
 
 # ---------------------------------------------------------------------------
-# Playback and S01 caching
+# Playback and local WAV caching
 # ---------------------------------------------------------------------------
 
 
@@ -786,7 +786,7 @@ def test_each_cue_plays_its_own_recording_for_its_full_duration(lesson, cache_di
     assert " ".join(scene.captions) == " ".join(TRANSCRIPTS[cue] for cue in ORDER)
 
 
-def test_service_uses_s01_cache_key_and_records_the_resolved_hash(lesson, cache_dir):
+def test_service_uses_local_wav_cache_key_and_records_the_resolved_hash(lesson, cache_dir):
     cues = load_cue_manifest(lesson.manifest).resolve(ORDER)
 
     play_cues(cues, cache_dir)
@@ -848,7 +848,7 @@ def test_rebinding_calculation_a_b_b_rewrites_no_neighbouring_copy(lesson, cache
 
 
 def test_replacing_recording_bytes_without_editing_the_manifest_is_picked_up(lesson, cache_dir):
-    """Hashes are evidence, not requirements: S01's content-addressed replacement still works."""
+    """Hashes are evidence, not requirements: the content-addressed replacement of LocalWavService still works."""
     manifest = load_cue_manifest(lesson.manifest)
     first = manifest.resolve(ORDER)
     play_cues(first, cache_dir)
@@ -921,7 +921,7 @@ ASSETS = ROOT / "examples" / "rl_lessons" / "assets"
 needs_repository_assets = pytest.mark.skipif(
     not ASSETS.is_dir(), reason="lesson assets are not copied into mutmut's generated worktree"
 )
-# SHA-256 and frame counts from S02_EXPORT_PROVENANCE.json (mono, 16-bit PCM, 22050 Hz).
+# SHA-256 and frame counts from the export provenance, docs/history/TAIGA_EXPORT_PROVENANCE.json (mono, 16-bit PCM, 22050 Hz).
 LESSON_RECORDINGS = {
     "question": ("section_0.wav", "054e095cc4176e37fdfd48a2e8d5024c7b6a634e354d598e2b37f861c934a6d7", 265874),
     "calculation": ("section_2.wav", "23a264b385bab216e832b3d7b98e9b09e96237b43beeafc063284ae1874f20b2", 161039),
@@ -940,7 +940,7 @@ UNCHANGED_BINARY = {
 UNCHANGED_TEXT = {
     "examples/rl_lessons/local_smoke.py": "a142aa5c726010c09a54b133308912af27f95f4c92b8e959f0713f4b51bebd40",
     "examples/rl_lessons/assets/narration.json": "b2b20f266e0930377f01fe59c8bba9242d2cfbc89faae9ab9b33914458f5e901",
-    "examples/s01_baseline.py": "224e6e172e3d928edee1a3be9445d5ba89dae1d83b995bc7c27b61f67056833f",
+    "examples/local_wav_baseline.py": "9f668440a50fcacd22b5c2d59f0b131f555c2b07ba40e453e5916388be364f2e",
 }
 
 
@@ -968,6 +968,6 @@ def test_original_lesson_recordings_are_unchanged(relative):
 
 @needs_repository_assets
 @pytest.mark.parametrize("relative", UNCHANGED_TEXT)
-def test_original_lesson_and_s01_example_are_unchanged(relative):
+def test_original_lesson_and_local_wav_example_are_unchanged(relative):
     content = (ROOT / relative).read_bytes().replace(b"\r\n", b"\n")
     assert hashlib.sha256(content).hexdigest() == UNCHANGED_TEXT[relative]

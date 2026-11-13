@@ -1,7 +1,7 @@
-"""S02: the text-only expected-reward lesson and its independent expected timeline.
+"""Cue Bindings: the text-only expected-reward lesson and its independent expected timeline.
 
 Covers the scene (cue order, transcripts, text-only panels, tracked manifest, failing
-before rendering), the timeline model in scripts/s02_timeline.py, and, in the tests
+before rendering), the timeline model in scripts/expected_reward_timeline.py, and, in the tests
 marked ``integration``, real Manim renders of the lesson scene compared with timelines
 computed before rendering.
 """
@@ -39,15 +39,15 @@ def load_module(name, path):
 
 @pytest.fixture(scope="module")
 def lesson():
-    return load_module("s02_expected_reward_lesson", LESSON_FILE)
+    return load_module("expected_reward_lesson", LESSON_FILE)
 
 
 @pytest.fixture(scope="module")
 def timeline():
-    return load_module("s02_timeline", ROOT / "scripts" / "s02_timeline.py")
+    return load_module("expected_reward_timeline", ROOT / "scripts" / "expected_reward_timeline.py")
 
 
-# Frame counts of sections 0, 2 and 3 (mono, 16-bit PCM, 22050 Hz), from S02_EXPORT_PROVENANCE.json.
+# Frame counts of sections 0, 2 and 3 (mono, 16-bit PCM, 22050 Hz), from docs/history/TAIGA_EXPORT_PROVENANCE.json.
 LESSON_FRAMES = {"question": 265874, "calculation": 161039, "decision": 317010}
 
 
@@ -152,7 +152,7 @@ def test_scene_layout_matches_the_independently_declared_timeline(lesson, timeli
         timeline.FINAL_HOLD_SECONDS,
     )
     assert lesson.CUE_ORDER == timeline.CUE_ORDER
-    assert QUALITIES["low_quality"]["frame_rate"] == timeline.FPS  # scripts/s02.sh renders with -ql
+    assert QUALITIES["low_quality"]["frame_rate"] == timeline.FPS  # scripts/dev.sh renders with -ql
 
 
 def render_settings(tmp_path):
@@ -187,7 +187,7 @@ def test_invalid_binding_fails_before_anything_is_rendered_or_cached(lesson, tmp
         ),
         encoding="utf-8",
     )
-    monkeypatch.setenv("S02_CUE_MANIFEST", str(manifest))
+    monkeypatch.setenv("CUE_BINDINGS_MANIFEST", str(manifest))
 
     with tempconfig(render_settings(tmp_path)):
         with pytest.raises(FileNotFoundError, match="not found or not a regular file"):
@@ -207,19 +207,6 @@ def test_frame_rules(timeline):
     assert timeline.animation_frames(0.3) == 5
     assert timeline.static_wait_frames(0.25) == 3
     assert timeline.TOLERANCE_FRAMES == 1
-
-
-@pytest.mark.parametrize("seconds", [0.001, 0.05, 1 / 15])
-def test_run_times_shorter_than_a_frame_become_one_frame(timeline, seconds):
-    # Manim's Scene.validate_run_time raises them to one frame (measured: a 0.05 s hold wrote one frame).
-    assert timeline.animation_frames(seconds) == 1
-    assert timeline.static_wait_frames(seconds) == 1
-
-
-@pytest.mark.parametrize("seconds", [0, -0.1])
-def test_run_times_of_zero_or_less_are_rejected_like_manim(timeline, seconds):
-    with pytest.raises(ValueError, match="cannot render"):
-        timeline.static_wait_frames(seconds)
 
 
 def lesson_a_durations():
@@ -305,7 +292,7 @@ def test_real_render_matches_the_expected_timeline(lesson, timeline, tmp_path, m
     )
     sources = {path.name: sha256(path) for path in directory.iterdir()}
     expected = timeline.timeline_for_manifest(manifest)  # computed before rendering
-    monkeypatch.setenv("S02_CUE_MANIFEST", str(manifest))
+    monkeypatch.setenv("CUE_BINDINGS_MANIFEST", str(manifest))
 
     with tempconfig(render_settings(tmp_path)):
         scene = lesson.ExpectedRewardCues()
@@ -325,10 +312,10 @@ def test_real_render_matches_the_expected_timeline(lesson, timeline, tmp_path, m
 
 
 # ---------------------------------------------------------------------------
-# The candidate alternate calculation take (fixtures/s02)
+# The candidate alternate calculation take (fixtures/cue_bindings)
 # ---------------------------------------------------------------------------
 
-ALTERNATE = ROOT / "fixtures" / "s02" / "calculation_alt.wav"
+ALTERNATE = ROOT / "fixtures" / "cue_bindings" / "calculation_alt.wav"
 ALTERNATE_TEXT = "One quarter times zero, plus three quarters times four, gives an expected reward of three"
 
 
@@ -343,7 +330,7 @@ def test_candidate_take_matches_its_provenance_and_the_requested_format():
     assert info["status"].startswith("CANDIDATE")
 
 
-def test_candidate_take_is_a_plain_wav_that_s01_accepts_without_ffmpeg():
+def test_candidate_take_is_a_plain_wav_that_local_wav_accepts_without_ffmpeg():
     from manim_voiceover.services.local_wav import _decodes_directly, ensure_decodable, read_recording
 
     data = ALTERNATE.read_bytes()

@@ -4,15 +4,33 @@ The local baseline is working under **WSL2 / Ubuntu 24.04**, using Conda Python 
 
 Upstream package files, names and license are retained; RL Studio maintains the dependency lockfile. RL Studio adds the lesson fixtures and local setup helpers; feature implementation follows on separate branches.
 
-## Daily commands
+## Native Windows
+
+From an Anaconda or Miniforge Prompt, activate the existing `rl_studio_win` environment. The native launcher uses the checkout's `.venv-windows`, or the environment selected by `RL_STUDIO_WINDOWS_ENV`. Run `sync` only when that environment needs setup.
+
+```powershell
+.\local-windows.ps1 status
+.\local-windows.ps1 test
+.\local-windows.ps1 s01
+.\local-windows.ps1 s02
+.\local-windows.ps1 bookmarks
+```
+
+`s01` renders and verifies both takes. `s02` and `bookmarks` produce native previews in `media/cue_bindings_windows/` and `media/bookmarks_windows/`. `s02 -CueManifest examples/rl_lessons/assets/expected_reward_my_voice.json` selects the personal take. `render` runs the math smoke scene and requires LaTeX and `dvisvgm`.
+
+## WSL daily commands
 
 From PowerShell:
 
 ```powershell
 cd C:\rl_projects\src\repos\rl_studio
 .\local.ps1 status
-.\local.ps1 test
-.\local.ps1 render
+.\local.ps1 setup               # same as sync: the environment below, from uv.lock
+.\local.ps1 test                # focused offline test suite
+.\local.ps1 demo local-wav      # Local WAV Narration demo (A/B), verified
+.\local.ps1 demo cue-bindings   # Cue Bindings demo (A -> B -> B, one cache), verified
+.\local.ps1 demo bookmarks      # Manual Narration Bookmarks demo, animation timing verified
+.\local.ps1 render              # the local smoke lesson
 .\local.ps1 shell
 ```
 
@@ -63,13 +81,13 @@ The explicit Conda specification is for Linux x86_64. `local_setup/native-packag
 - The original eSpeak baseline also passed rendering and media verification inside a Linux network namespace with networking disabled. The current Windows-voice render uses the same offline rendering pipeline.
 - The 42.721-second source narration fits within the video. The final voiced second has 0.9939 normalized correlation with the decoded MP4 audio; the check requires more than 0.97. This verifies preservation of the ending through AAC encoding, rather than a human listening review.
 - Four video frames were visually inspected for legibility and clipping. The displayed calculation is `0.25 * 0 + 0.75 * 4 = 3`, compared with a certain reward of 2.
-- The new Python helper files and example pass Ruff checks. The broader pre-publication suite was subsequently run; see `local_setup/baseline-checks.md` for the full passing checks. Alignerr environment verification is still separate.
+- The new Python helper files and example pass Ruff checks. The broader pre-publication suite was subsequently run; see `docs/history/baseline-checks.md` for the full passing checks. Alignerr environment verification is still separate.
 
 Reports are in `media/local_validation/`, which is already ignored by Git. Benign upstream pydub deprecation warnings and a Manim muxer unused-option warning were observed; stream/duration/audio checks passed.
 
 ## Fixtures and scope
 
-`examples/rl_lessons/local_smoke.py` uses the existing `VoiceoverScene`, `Scene.add_sound`, animation and timing APIs. It does not implement S01 or a new speech service.
+`examples/rl_lessons/local_smoke.py` uses the existing `VoiceoverScene`, `Scene.add_sound`, animation and timing APIs. It does not use `LocalWavService` or another new speech service.
 
 `examples/rl_lessons/assets/` contains offline Windows narration generated with **Microsoft Zira Desktop**, rate -1, at 22050 Hz / 16-bit / mono. The wording is unchanged. The two short A/B recording fixtures retain their original eSpeak NG 1.51 audio. Existing files are retained when rendering again.
 
@@ -84,4 +102,4 @@ bash scripts/rl_studio.sh render
 
 Windows is required only to synthesize new Zira recordings. The supplied WAVs render in Linux without Windows speech support.
 
-S01 remains a later task: selecting an external WAV through the Voiceover service API, preserving it, and handling content-sensitive cache replacement. Platform instructions, eligibility and the separate initial prompt still require verification later. Begin feature work from the validated baseline on a new branch.
+Selecting an external WAV through the Voiceover service API, preserving it and handling content-sensitive cache replacement were added later as Local WAV Narration ([docs/local_wav.md](docs/local_wav.md)). Platform instructions, eligibility and the separate initial prompt still require verification later. Begin feature work from the validated baseline on a new branch.

@@ -1,17 +1,17 @@
-"""S02: the expected-reward lesson as three stable narration cues, with text-only panels.
+"""Cue Bindings: the expected-reward lesson as three stable narration cues, with text-only panels.
 
 The scene decides the cue order. A version 1 cue manifest binds each cue ID to a WAV
 file in the manifest's directory (see manim_voiceover.services.cue_bindings), and each
-cue is played through S01's LocalWavService, so its validation, source preservation
+cue is played through LocalWavService (Local WAV Narration), so its validation, source preservation
 and caching apply unchanged. Rebinding one cue in the manifest changes only that cue's
 recording; the panels and transcripts below stay the same.
 
 Each voiceover block lasts as long as its recording. The panel fades in during the
 block, and fades out after the block except for the last one. A final hold follows.
-scripts/s02_timeline.py predicts the resulting timeline independently from the same
+scripts/expected_reward_timeline.py predicts the resulting timeline independently from the same
 declared layout and Manim's frame rules.
 
-The manifest is taken from S02_CUE_MANIFEST, or defaults to the tracked manifest
+The manifest is taken from CUE_BINDINGS_MANIFEST, or defaults to the tracked manifest
 next to the original recordings (sections 0, 2 and 3 of the lesson narration).
 """
 
@@ -38,7 +38,7 @@ TRANSCRIPTS = {
         "the uncertain action. This comparison is about averages, not a guarantee for any single trial."
     ),
 }
-# Declared layout. scripts/s02_timeline.py declares the same values independently; a test keeps them equal.
+# Declared layout. scripts/expected_reward_timeline.py declares the same values independently; a test keeps them equal.
 FADE_IN_SECONDS = 0.4
 FADE_OUT_SECONDS = 0.3
 FINAL_HOLD_SECONDS = 0.25
@@ -74,7 +74,7 @@ def build_panel(cue_id: str) -> VGroup:
 
 class ExpectedRewardCues(VoiceoverScene):
     def construct(self) -> None:
-        manifest = load_cue_manifest(os.environ.get("S02_CUE_MANIFEST", DEFAULT_MANIFEST))
+        manifest = load_cue_manifest(os.environ.get("CUE_BINDINGS_MANIFEST", DEFAULT_MANIFEST))
         cues = manifest.resolve(CUE_ORDER)  # every recording is validated before anything renders
         self.camera.background_color = "#101827"
         self.add(

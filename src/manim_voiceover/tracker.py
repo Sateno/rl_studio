@@ -11,6 +11,14 @@ from manim_voiceover.modify_audio import get_duration
 AUDIO_OFFSET_RESOLUTION = 10_000_000
 
 
+class BookmarkError(ValueError):
+    """A manual narration bookmark is invalid or cannot be used (see manim_voiceover.services.local_wav_bookmarks)."""
+
+
+class UnknownBookmarkError(BookmarkError):
+    """A scene requested a bookmark that is not defined for the recording."""
+
+
 class TimeInterpolator:
     def __init__(self, word_boundaries: list[WordBoundary]) -> None:
         self.x: list[int] = []
@@ -52,6 +60,12 @@ class VoiceoverTracker:
 
         if "word_boundaries" in self.data:
             self._process_bookmarks()
+
+        # Manual bookmarks (LocalWavService(..., bookmarks=...)): seconds from the start of the recording.
+        self.manual_bookmarks: dict[str, float] | None = None
+        manual = self.data.get("manual_bookmarks")
+        if manual is not None:
+            self._set_manual_bookmarks(manual)
 
     def _get_fallback_word_boundaries(self) -> list[WordBoundary]:
         """
@@ -113,6 +127,11 @@ class VoiceoverTracker:
             elapsed = self.time_interpolator.interpolate(dist * transcribed_text_len / net_text_len)
             self.bookmark_times[mark] = self.start_t + elapsed
 
+    def _set_manual_bookmarks(self, manual: dict[str, float]) -> None:
+        """Bookmark times in scene time: the voiceover's start plus each bookmark's seconds into the recording."""
+        self.manual_bookmarks = dict(manual)
+        self.bookmark_times = {name: self.start_t + seconds for name, seconds in manual.items()}
+
     def get_remaining_duration(self, buff: float = 0.0) -> float:
         """Returns the remaining duration of the voiceover.
 
@@ -149,6 +168,10 @@ class VoiceoverTracker:
         Returns:
             int:
         """
+        manual = getattr(self, "manual_bookmarks", None)
+        if manual is not None and mark not in manual:
+            available = ", ".join(sorted(manual))
+            raise UnknownBookmarkError(f"Unknown bookmark {mark!r}; the recording's bookmarks are: {available}")
         self._check_bookmarks()
         if mark not in self.bookmark_times:
             raise Exception("There is no <bookmark mark='%s' />" % mark)

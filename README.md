@@ -4,18 +4,40 @@ Tools and examples for advanced educational reinforcement-learning videos, based
 
 The initial baseline includes a reproducible WSL2/Ubuntu setup, Conda Python 3.12, uv-locked dependencies, focused upstream tests, and a short mathematical lesson with local narration. The Python package remains `manim-voiceover` / `manim_voiceover`; the upstream source and MIT notices are preserved.
 
-**Validation status:** S01 passed 237 full-suite tests (97.85% coverage), all 3,468 mutation checks, formatting, lint, type checks, the dependency audit and Slophammer. Its focused workflow passed 158 tests and both verified A/B renders. See [S01 integration validation](local_setup/s01-validation.md), [baseline validation](local_setup/baseline-checks.md) and the historical [task-sandbox record](docs/s01-task-record.md).
+**Validation status:** Local WAV Narration passed 237 full-suite tests (97.85% coverage), all 3,468 mutation checks, formatting, lint, type checks, the dependency audit and Slophammer. Its focused workflow passed 158 tests and both verified A/B renders. Historical records are kept unchanged in [docs/history](docs/history/README.md): the Local WAV Narration integration validation, the baseline validation and the task-sandbox record.
 
-See [local setup and validation](LOCAL_SETUP.md) for the tested environment, commands and limitations. From PowerShell in the checkout:
+See [local setup and validation](LOCAL_SETUP.md) for the native Windows Conda/uv launcher (`local-windows.ps1`) and the WSL workflow. From PowerShell, the WSL commands are:
 
 ```powershell
 .\local.ps1 status
+.\local.ps1 setup
 .\local.ps1 test
+.\local.ps1 demo local-wav
+.\local.ps1 demo cue-bindings
+.\local.ps1 demo bookmarks
 .\local.ps1 render
 .\local.ps1 shell
 ```
 
-Scenes and recording fixtures are under `examples/rl_lessons/`. Rendered media and local environment files are excluded from Git. S01 adds `LocalWavService` for mono/stereo 16-bit PCM WAV narration. See the [S01 workflow, setup and limitations](docs/s01.md).
+In Linux or WSL, the same operations are:
+
+```bash
+bash scripts/dev.sh setup
+bash scripts/dev.sh test
+bash scripts/dev.sh demo local-wav
+bash scripts/dev.sh demo cue-bindings
+bash scripts/dev.sh demo bookmarks
+UV_NO_DEV=1 uv run --frozen pytest -v tests/test_render_workflow.py      # one test file on its own
+UV_NO_DEV=1 uv run --frozen pytest -v tests/test_local_wav_bookmarks.py
+```
+
+Scenes and recording fixtures are under `examples/rl_lessons/`. Rendered media and local environment files are excluded from Git. Features:
+
+- **Local WAV Narration** (`local_wav`, `demo local-wav`): `LocalWavService` plays mono/stereo 16-bit PCM WAV narration. See [docs/local_wav.md](docs/local_wav.md).
+- **Cue Bindings** (`cue_bindings`, `demo cue-bindings`): stable cue IDs bound to recordings by a JSON manifest. See [docs/cue_bindings.md](docs/cue_bindings.md).
+- **Manual Narration Bookmarks** (`local_wav_bookmarks`, `demo bookmarks`): named times in a recording; a scene waits for a bookmark and triggers an animation. See [docs/local_wav_bookmarks.md](docs/local_wav_bookmarks.md).
+
+Videos and verification reports are written to `media/local_wav/`, `media/cue_bindings/` and `media/bookmarks/` (`media/bookmarks/verification.json`).
 
 The upstream release-publishing workflow is restricted to the upstream repository. RL Studio does not publish the `manim-voiceover` package to PyPI.
 

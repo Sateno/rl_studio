@@ -1,25 +1,16 @@
-"""Independent expected timeline for the S02 expected-reward lesson.
+"""Independent expected timeline for the expected-reward Cue Bindings lesson.
 
 The timeline is computed only from the recordings' WAV headers, the lesson layout
-declared below and Manim's frame rules. It does not import Manim, Manim Voiceover,
-the cue resolver or the scene, so it can check a render instead of repeating it.
-
-Manim 0.20.1 rules reproduced here (Cairo renderer):
-- a run time or wait of zero or less is rejected, and one shorter than a frame is
-  raised to exactly one frame (Scene.validate_run_time);
-- an animation of run_time r writes len(numpy.arange(0, r, 1 / fps)) frames;
-- a static wait of d seconds writes int(d / (1 / fps)) frames;
-- the renderer clock advances 1 / fps for each frame written;
-- a voiceover block waits for the rest of its recording only if more than one
-  frame remains (VoiceoverScene.safe_wait);
-- a cue's audio is overlaid at int(1000 * clock) milliseconds.
+declared below and Manim's frame rules (scripts/render_verification.py). It does not
+import Manim, Manim Voiceover, the cue resolver or the scene, so it can check a render
+instead of repeating it.
 
 Timings are compared against a render with a tolerance of TOLERANCE_FRAMES, declared
 here before any render; a codec allowance, if any, must be measured, not assumed.
 
 Usage:
-    python scripts/s02_timeline.py expect MANIFEST      # expected timeline as JSON
-    python scripts/s02_timeline.py compare A.json B.json  # compare two expected timelines
+    python scripts/expected_reward_timeline.py expect MANIFEST      # expected timeline as JSON
+    python scripts/expected_reward_timeline.py compare A.json B.json  # compare two expected timelines
 """
 
 import argparse
@@ -30,53 +21,21 @@ import wave
 from collections.abc import Sequence
 from pathlib import Path
 
-import numpy as np
+from render_verification import RENDER_FPS, FrameClock, animation_frames, static_wait_frames, validated_run_time
 
-FPS = 15  # manim -ql
+FPS = RENDER_FPS  # manim -ql
 FADE_IN_SECONDS = 0.4
 FADE_OUT_SECONDS = 0.3
 FINAL_HOLD_SECONDS = 0.25
 TOLERANCE_FRAMES = 1
 CUE_ORDER = ("question", "calculation", "decision")
-
-
-def validated_run_time(run_time: float, fps: int = FPS) -> float:
-    """Manim rejects run times of zero or less and raises shorter than one frame to one frame."""
-    if run_time <= 0:
-        raise ValueError(f"Manim cannot render a run time of {run_time:g} seconds")
-    return max(run_time, 1 / fps)
-
-
-def animation_frames(run_time: float, fps: int = FPS) -> int:
-    return len(np.arange(0, validated_run_time(run_time, fps), 1 / fps))
-
-
-def static_wait_frames(duration: float, fps: int = FPS) -> int:
-    return int(validated_run_time(duration, fps) / (1 / fps))
-
-
-class _Clock:
-    """Manim's renderer clock: frames written and the floating-point time they add up to."""
-
-    def __init__(self, fps: int) -> None:
-        self.fps = fps
-        self.frames = 0
-        self.time = 0.0
-
-    def animate(self, run_time: float) -> None:
-        for _ in range(animation_frames(run_time, self.fps)):
-            self.frames += 1
-            self.time += 1 / self.fps
-
-    def wait_static(self, duration: float) -> None:
-        count = static_wait_frames(duration, self.fps)
-        self.frames += count
-        self.time += count * (1 / self.fps)
+# Manim's frame rules, shared with the verifiers; re-exported for this timeline's users and tests.
+__all__ = ["animation_frames", "static_wait_frames", "validated_run_time", "expected_timeline", "timeline_for_manifest"]
 
 
 def expected_timeline(cues: Sequence[tuple[str, float]], fps: int = FPS) -> dict[str, object]:
     """The expected timeline for (cue ID, recording duration in seconds) pairs, in scene order."""
-    clock = _Clock(fps)
+    clock = FrameClock(fps)
     entries: list[dict[str, object]] = []
     for index, (cue_id, duration) in enumerate(cues):
         start_time, start_frame = clock.time, clock.frames
