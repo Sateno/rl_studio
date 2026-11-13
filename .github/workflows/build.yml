@@ -41,7 +41,12 @@ jobs:
     - name: Mypy
       run: uv run mypy
     - name: Test with coverage
-      run: uv run pytest --cov=manim_voiceover --cov-fail-under=85
+      run: uv run pytest --cov=manim_voiceover --cov-config=pyproject.toml --cov-fail-under=85
+    - name: Verify Linux narration demos
+      run: |
+        bash scripts/dev.sh demo local-wav
+        bash scripts/dev.sh demo cue-bindings
+        bash scripts/dev.sh demo bookmarks
     - name: Check duplication
       run: uv run slophammer-py dry .
     - name: Check mutations
@@ -55,3 +60,24 @@ jobs:
       run: |
         uv run slophammer-py check .
         uv run slophammer-py check . --execute
+
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+
+    steps:
+    - uses: actions/checkout@v6
+    - uses: conda-incubator/setup-miniconda@v3
+      with:
+        miniforge-version: latest
+        activate-environment: ""
+        auto-activate-base: false
+    - name: Create the Windows Conda environment
+      run: conda create -y -n rl_studio_win --override-channels -c conda-forge python=3.12 uv=0.13.7 ffmpeg=9.0.2
+    - name: Run Windows tests and narration renders
+      shell: pwsh
+      run: |
+        foreach ($action in 'sync', 'status', 'test-all', 's01', 's02', 'bookmarks') {
+          conda run --no-capture-output -n rl_studio_win powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\local.ps1 $action
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        }
