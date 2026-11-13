@@ -150,5 +150,10 @@ dist/
 
 .ruff_cache/
 
+# Project-local Pango headers (scripts/pango_sysroot.sh); .s01-sysroot is the legacy location
+/.pango-sysroot/
 /.s01-sysroot/
+
+# Personal assets (for example own recordings) stay local and are never committed
+/local_assets/
 /.venv-windows/

@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "bookmarks": [
+    {"name": "quarter_times_zero", "seconds": 0.12},
+    {"name": "three_quarters_times_four", "seconds": 2.17},
+    {"name": "expected_reward_three", "seconds": 4.57}
+  ]
+}

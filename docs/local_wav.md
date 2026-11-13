@@ -1,8 +1,8 @@
-# S01 local WAV service
+# Local WAV Narration (`LocalWavService`)
 
-This workflow integrates the final S01 task snapshot into the full RL Studio repository. The upstream license, author metadata, existing tools and other tests are retained. The archived task results are in [the task record](s01-task-record.md); they describe the task sandbox, not a new local validation run.
+This workflow integrates the final Local WAV Narration task snapshot into the full RL Studio repository. The upstream license, author metadata, existing tools and other tests are retained. The archived task results are in [the task record](history/s01-task-record.md) (a historical record, kept unchanged); they describe the task sandbox, not a new local validation run.
 
-The prerecorded-WAV speech service is `manim_voiceover.services.local_wav.LocalWavService`. It plays one local, uncompressed 16-bit PCM WAV file with one or two channels (mono or stereo narration) at normal speed through the standard `VoiceoverScene.voiceover(text=...)` API, and the voiceover lasts exactly as long as the recording. The voiceover text is the recording's transcript; it is not synthesized or transcribed. The source file is never modified. Missing, empty, corrupt, non-16-bit-PCM or surround (more than two channels) files raise `FileNotFoundError` or `InvalidRecordingError`. Two valid WAV layouts are accepted but need FFmpeg to render (see "WAV layouts that need FFmpeg" below); without it they raise `AudioDecoderDependencyError`. The cache key includes the SHA-256 hash of the recording, so replacing the audio at the same path updates the next render, and unchanged audio reuses its existing cached copy. `examples/s01_baseline.py` uses this service. Its service, validation, preservation, duration, replacement and cache-reuse behaviour is covered by `tests/test_local_wav_service.py`.
+The prerecorded-WAV speech service is `manim_voiceover.services.local_wav.LocalWavService`. It plays one local, uncompressed 16-bit PCM WAV file with one or two channels (mono or stereo narration) at normal speed through the standard `VoiceoverScene.voiceover(text=...)` API, and the voiceover lasts exactly as long as the recording. The voiceover text is the recording's transcript; it is not synthesized or transcribed. The source file is never modified. Missing, empty, corrupt, non-16-bit-PCM or surround (more than two channels) files raise `FileNotFoundError` or `InvalidRecordingError`. Two valid WAV layouts are accepted but need FFmpeg to render (see "WAV layouts that need FFmpeg" below); without it they raise `AudioDecoderDependencyError`. The cache key includes the SHA-256 hash of the recording, so replacing the audio at the same path updates the next render, and unchanged audio reuses its existing cached copy. `examples/local_wav_baseline.py` uses this service. Its service, validation, preservation, duration, replacement and cache-reuse behaviour is covered by `tests/test_local_wav_service.py`.
 
 ## Included
 
@@ -12,22 +12,22 @@ The prerecorded-WAV speech service is `manim_voiceover.services.local_wav.LocalW
 - Original dependency lockfile and package configuration, plus pinned pytest dependencies.
 - A text-only baseline scene, media verification and setup/check commands below.
 
-The full repository also contains other examples, cloud-service tests and development tooling. The minimal S01 test command selects its five original core test files plus both `test_local_wav*.py` files; the full development suite is checked separately by CI.
+The full repository also contains other examples, cloud-service tests and development tooling. `bash scripts/dev.sh test` runs the focused offline suite: the original core test files and every feature's tests, including both `test_local_wav*.py` files. The full development suite is checked separately by CI.
 
 ## Environment
 
-On Windows, use the [native setup](../LOCAL_SETUP.md) and run `.\local.ps1 s01`. For Alignerr on the `dev` branch, use Linux Python 3.12 and uv. No microphone, speech API, transcription model or LaTeX installation is needed. The FFmpeg command-line tools are not needed for the supplied fixtures or renders. They are only needed for the WAV layouts described below. Audio/video decoding uses PyAV, already required by Manim.
+Use Linux Python 3.12 and uv. Conda can supply Python (as in the local WSL setup), but is not required by this workflow. No microphone, speech API, transcription model or LaTeX installation is needed. The FFmpeg command-line tools are not needed for the supplied fixtures or renders. They are only needed for the WAV layouts described below. Audio/video decoding uses PyAV, already required by Manim.
 
 ### Setup prerequisites (Taiga image: Ubuntu 24.04, x86_64, no administrator access)
 
 - Python 3.12 and uv (tested: Python 3.12.3, uv 0.9.10). Python is never downloaded.
 - A C toolchain, `pkg-config`, the Python 3.12 headers and the Cairo development files (`build-essential`, `pkg-config`, `python3.12-dev`, `libcairo2-dev`). `manimpango` 0.6.1 and `pycairo` 1.29.0 have no Linux wheels and are compiled during setup.
-- The Pango runtime libraries (`libpango-1.0-0`, `libpangocairo-1.0-0`). The Pango **development** files (`pangocairo >= 1.30`) are used from the system if present. Otherwise `setup` runs `scripts/s01_pango_sysroot.sh`. That script downloads the Ubuntu `-dev` packages that exactly match the installed runtime libraries and unpacks them into the git-ignored `.s01-sysroot/` folder. Each package is checked against the SHA-256 in the signed Ubuntu archive index. This needs no root access and changes nothing outside the project. The headers are only used at build time; the compiled module links the system libraries.
+- The Pango runtime libraries (`libpango-1.0-0`, `libpangocairo-1.0-0`). The Pango **development** files (`pangocairo >= 1.30`) are used from the system if present. Otherwise `setup` runs `scripts/pango_sysroot.sh`. That script downloads the Ubuntu `-dev` packages that exactly match the installed runtime libraries and unpacks them into the git-ignored `.pango-sysroot/` folder. Each package is checked against the SHA-256 in the signed Ubuntu archive index. This needs no root access and changes nothing outside the project. The headers are only used at build time; the compiled module links the system libraries.
 - HTTPS trust: in the Taiga image, HTTPS traffic passes through an egress proxy whose CA is only in the system store. The image exports `SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt`, which uv needs. Keep it set when running the commands.
 - Optional: the FFmpeg command-line tools `ffmpeg` and `ffprobe` (Ubuntu package `ffmpeg`; both are installed in the Taiga image). `doctor` reports whether they are available. See the next section for when they are needed.
-- Network access during `setup`: the Python package index used by uv (packages, plus the build backends Cython, setuptools, wheel, meson-python and hatchling) and the Ubuntu archive in `/etc/apt/sources.list.d/ubuntu.sources` (only when `.s01-sysroot/` is needed).
+- Network access during `setup`: the Python package index used by uv (packages, plus the build backends Cython, setuptools, wheel, meson-python and hatchling) and the Ubuntu archive in `/etc/apt/sources.list.d/ubuntu.sources` (only when `.pango-sysroot/` is needed).
 
-`uv.lock` differs from the pre-S01 repository lock in exactly two packages that the task's package index did not serve: `certifi` 2026.10.23 → 2026.10.18 (used only by the translation extra) and `soupsieve` 4.1 → 4.0.1 (required by Manim through beautifulsoup4). Their URLs, sizes and SHA-256 hashes were checked against the downloaded files. uv verifies them again on every install. The index reports no known vulnerabilities for either version.
+`uv.lock` differs from the repository lock before Local WAV Narration in exactly two packages that the task's package index did not serve: `certifi` 2026.10.23 → 2026.10.18 (used only by the translation extra) and `soupsieve` 4.1 → 4.0.1 (required by Manim through beautifulsoup4). Their URLs, sizes and SHA-256 hashes were checked against the downloaded files. uv verifies them again on every install. The index reports no known vulnerabilities for either version.
 
 Virtual environments, downloaded native headers, caches and generated media are not committed.
 
@@ -42,29 +42,32 @@ Both layouts are accepted. With FFmpeg installed, they render identically to the
 
 ## Commands
 
-For WSL or Alignerr, run from the repository root with Linux Python 3.12 and uv on PATH. Use `dev` as the starting branch for Alignerr tasks. S01 setup uses its own repository-local `.venv`.
+Run from the repository root in Linux/WSL, with Python 3.12 and uv available. From Windows, `.\local.ps1 s01` runs and verifies both takes natively. Use `.\local-wsl.ps1 demo local-wav` to run the demo in WSL or `.\local-wsl.ps1 shell` to open its environment. `dev.sh setup` uses the repository-local `.venv` (or `$UV_PROJECT_ENVIRONMENT` if set).
 
 ```bash
-bash scripts/s01.sh doctor
-bash scripts/s01.sh setup
-bash scripts/s01.sh test
-bash scripts/s01.sh render a
-bash scripts/s01.sh render b
+bash scripts/dev.sh doctor
+bash scripts/dev.sh setup
+bash scripts/dev.sh test
+bash scripts/dev.sh demo local-wav        # render and verify take a, then take b
+bash scripts/dev.sh local-wav render a    # or one take at a time
+bash scripts/dev.sh local-wav render b
 ```
+
+A single test file runs on its own with `UV_NO_DEV=1 uv run --frozen pytest -v tests/test_local_wav_service.py`. `UV_NO_DEV=1` keeps uv from installing the development dependency group; `dev.sh` sets it for its own commands.
 
 `setup` installs runtime dependencies from `uv.lock`, the small translation extra required by an existing mocked test, and the pinned pytest requirements. No translation service is called. It uses `.venv` inside this bundle; subsequent commands locate it by absolute path, so shell PATH changes are not needed between responses.
 
-`test` runs the selected core tests plus `tests/test_local_wav*.py`; it does not require the unrelated cloud-service SDKs. There are 158 tests: 48 core tests, 87 task speech-service tests and 23 integration contract tests. Most speech-service tests use a mock scene: they validate the service (input checks, durations, cache and source preservation) but do not decode or encode audio, so they are not rendering proof. Rendering is covered by the tests marked `integration`, which run real Manim renders. The 4 real renders of the FFmpeg-only layouts are skipped when `ffmpeg` or `ffprobe` is missing. It checks that imports resolve to this extracted package, rather than another checkout.
+`test` runs the core tests and every feature's tests; it does not require the unrelated cloud-service SDKs. The Local WAV Narration tests (`tests/test_local_wav*.py`) are 110: 87 task speech-service tests and 23 integration contract tests; with the 48 core tests they formed the original 158-test focused suite. Most speech-service tests use a mock scene: they validate the service (input checks, durations, cache and source preservation) but do not decode or encode audio, so they are not rendering proof. Rendering is covered by the tests marked `integration`, which run real Manim renders. The 4 real renders of the FFmpeg-only layouts are skipped when `ffmpeg` or `ffprobe` is missing. It checks that imports resolve to this extracted package, rather than another checkout.
 
-`render a` and `render b` copy the selected fixture to the SAME working pathname `media/s01/input.wav` and render with the same media/cache directory (voiceover copies are kept in `media/s01/voiceovers`). The original fixtures are never modified. These commands also verify the resulting audio/video.
+`local-wav render a` and `local-wav render b` copy the selected fixture to the SAME working pathname `media/local_wav/input.wav` and render with the same media/cache directory (voiceover copies are kept in `media/local_wav/voiceovers`). The original fixtures are never modified. These commands also verify the resulting audio/video.
 
 Outputs:
 
 ```text
-media/s01/videos/s01_baseline/480p15/baseline-a.mp4
-media/s01/videos/s01_baseline/480p15/baseline-b.mp4
-media/s01/verification-a.json
-media/s01/verification-b.json
+media/local_wav/videos/local_wav_baseline/480p15/baseline-a.mp4
+media/local_wav/videos/local_wav_baseline/480p15/baseline-b.mp4
+media/local_wav/verification-a.json
+media/local_wav/verification-b.json
 ```
 
 Both outputs must contain video and matching audio. The video must cover the full source recording and end no more than 0.4 seconds later; the baseline adds a 0.25-second hold. The final voiced second must correlate with the source above 0.97 after encoding. Original fixture hashes must still match `fixtures/info.json`. These checks validate the fixtures and render pipeline; new tests must separately establish service integration, invalid-input handling and actual cache reuse/replacement.
@@ -72,28 +75,28 @@ Both outputs must contain video and matching audio. The video must cover the ful
 You can rerun verification without rendering:
 
 ```bash
-bash scripts/s01.sh verify a
-bash scripts/s01.sh verify b
+bash scripts/dev.sh local-wav verify a
+bash scripts/dev.sh local-wav verify b
 ```
 
 ### Verifying setup in a fresh copy
 
-To prove setup from scratch without touching an existing `.venv`, `media/` or `.s01-sysroot/`, copy the project without generated folders. Then run every command with a new, empty uv cache:
+To prove setup from scratch without touching an existing `.venv`, `media/` or `.pango-sysroot/`, copy the project without generated folders. Then run every command with a new, empty uv cache:
 
 ```bash
-FRESH="$HOME/s01-fresh"            # any new, empty location outside this project
+FRESH="$HOME/local-wav-fresh"            # any new, empty location outside this project
 mkdir -p "$FRESH/uv-cache"
-tar -C "$PWD" --exclude=./.git --exclude=./.venv --exclude=./media --exclude=./.s01-sysroot \
-    --exclude=./mutants --exclude=./.pytest_cache --exclude='__pycache__' -cf - . | tar -C "$FRESH" --one-top-level=rl_studio_s01 -xf -
-cd "$FRESH/rl_studio_s01"
+tar -C "$PWD" --exclude=./.git --exclude=./.venv --exclude=./media --exclude=./.pango-sysroot \
+    --exclude=./mutants --exclude=./.pytest_cache --exclude='__pycache__' -cf - . | tar -C "$FRESH" --one-top-level=rl_studio -xf -
+cd "$FRESH/rl_studio"
 export UV_CACHE_DIR="$FRESH/uv-cache"; unset PKG_CONFIG_PATH   # keep the image's SSL_CERT_FILE
-bash scripts/s01.sh doctor && bash scripts/s01.sh setup && bash scripts/s01.sh test
-bash scripts/s01.sh render a && bash scripts/s01.sh render b
+bash scripts/dev.sh doctor && bash scripts/dev.sh setup && bash scripts/dev.sh test
+bash scripts/dev.sh demo local-wav
 ```
 
 ## Known limitations
 
-These limitations are recorded, not fixed. Origins: **S01** means a design choice of the S01 speech service. **Inherited** means the behavior comes from Manim, manim-voiceover, pydub or PyAV. **Environment** means the Taiga image or package index. **Out of scope** means excluded by the S01 request.
+These limitations are recorded, not fixed. Origins: **Local WAV** means a design choice of the local WAV speech service. **Inherited** means the behavior comes from Manim, manim-voiceover, pydub or PyAV. **Environment** means the Taiga image or package index. **Out of scope** means excluded by the S01 request.
 
 ### What each limitation means and when it matters
 
@@ -102,20 +105,20 @@ These limitations are recorded, not fixed. Origins: **S01** means a design choic
 | 1 | One recording per service | `LocalWavService` is bound to one file. Every `voiceover()` block plays the whole recording (two blocks play it twice). | Scenes that need several clips or parts of one clip. | Out of scope (multi-clip) |
 | 2 | 16-bit PCM only | 8/24/32-bit, float, compressed, MP3 and RF64 files are rejected. RF64 gets the generic "corrupt or not an uncompressed PCM WAV" message (kept as a documented limitation). | Recordings exported as 24-bit or float, or files over 4 GiB (RIFF limit). Convert to 16-bit PCM WAV first. | Out of scope (formats) |
 | 3 | Normal speed only | `global_speed` must be 1.0; SoX is not used. | Anyone expecting speed adjustment. | Out of scope |
-| 4 | No transcription | The transcript is not compared with the audio. Bookmarks (`wait_until_bookmark`) have no word timings. | Wrong transcript text goes unnoticed; bookmark-timed animations fail. | Out of scope |
-| 5 | Whole file in memory | Validation holds the file, its samples and pydub's decoded copy at once: 3.0x the file size, on every render including cache hits. A whole render of a 110 MiB file peaked at 708 MiB. See "Memory usage". | Long recordings on machines with limited memory. | S01 (validation) + Inherited (Manim's mixing) |
-| 6 | One cached copy per content and transcript, never removed | Each distinct recording and transcript pair is copied into `media/.../voiceovers`. Old copies stay. | Disk usage after many re-takes. | S01 (copies) + Inherited (no cache cleanup) |
+| 4 | No transcription | The transcript is not compared with the audio. Text bookmarks (`<bookmark mark=.../>` tags) have no word timings; use [Manual Narration Bookmarks](local_wav_bookmarks.md) (`LocalWavService(..., bookmarks=...)`) to time animations. | Wrong transcript text goes unnoticed; text-tag bookmarks fail. | Out of scope |
+| 5 | Whole file in memory | Validation holds the file, its samples and pydub's decoded copy at once: 3.0x the file size, on every render including cache hits. A whole render of a 110 MiB file peaked at 708 MiB. See "Memory usage". | Long recordings on machines with limited memory. | Local WAV (validation) + Inherited (Manim's mixing) |
+| 6 | One cached copy per content and transcript, never removed | Each distinct recording and transcript pair is copied into `media/.../voiceovers`. Old copies stay. | Disk usage after many re-takes. | Local WAV (copies) + Inherited (no cache cleanup) |
 | 7 | `cache.json` grows and is not concurrency-safe | One entry is appended per voiceover, even on cache hits. The file is rewritten with read-modify-write. | Long-lived media folders; parallel renders sharing one media folder could lose entries (not tested). | Inherited |
-| 8 | Trailing bytes and RIFF size not validated | Bytes after the `data` chunk are ignored. Tested: they do not change the decoded audio or duration. | Only if a file's tail matters to you; the audio is unaffected. | S01 |
+| 8 | Trailing bytes and RIFF size not validated | Bytes after the `data` chunk are ignored. Tested: they do not change the decoded audio or duration. | Only if a file's tail matters to you; the audio is unaffected. | Local WAV |
 | 9 | Truncation detected only when header and data disagree | A file cut short whose header was rewritten to match looks like a shorter recording. | Damaged files "repaired" by another tool. | Inherent to WAV |
 | 10 | Two layouts need FFmpeg | An odd-sized chunk before `data`, or `data` after ten chunks, is decoded through `ffmpeg` and `ffprobe`. Without them: `AudioDecoderDependencyError`. | Files from editors that add metadata chunks before the audio, on machines without FFmpeg. | Inherited (pydub) |
-| 11 | Mono and stereo only | Recordings with 3 or more channels are rejected with `InvalidRecordingError`. Reason: Manim encodes MP4 audio as stereo. Before this restriction, 3/4/6-channel files rendered as a stereo downmix, and the 4th channel of a 5.1 file (LFE) was dropped. | Surround or multi-track recordings: mix them down to stereo or mono first. | S01 decision (narration scope), prompted by Manim/PyAV downmixing |
+| 11 | Mono and stereo only | Recordings with 3 or more channels are rejected with `InvalidRecordingError`. Reason: Manim encodes MP4 audio as stereo. Before this restriction, 3/4/6-channel files rendered as a stereo downmix, and the 4th channel of a 5.1 file (LFE) was dropped. | Surround or multi-track recordings: mix them down to stereo or mono first. | Local WAV decision (narration scope), prompted by Manim/PyAV downmixing |
 | 12 | MP4 audio is AAC at 48 kHz | The output is lossy and resampled. The verifier therefore uses correlation (> 0.97), not bit equality. | Bit-exact audio requirements. | Inherited (Manim) |
 | 13 | Video length is rounded to frames | Without the example's 0.25 s hold, the video ends 11–18 ms before the recording at 15 fps (measured for both takes). The hold is therefore kept; see "Why the example ends with a 0.25 s hold". | Removing or shortening the hold, or changing quality or frame rate. | Inherited (Manim) |
 | 14 | Subtitle timing is proportional | Subtitle chunks are timed by character count over the recording's duration, not by actual speech. | Precise caption timing. | Inherited |
 | 15 | Lock substitutions | `certifi` 2026.10.18 and `soupsieve` 4.0.1 replace pins that the index does not serve. Hashes are verified; the index feed reports no known vulnerabilities. OSV and GitHub were unreachable. | Moving to an index that serves the original pins, or needing an independent security audit. | Environment |
 | 16 | Build tools are not pinned | Cython (< 3.1), setuptools, wheel, meson-python, meson, ninja and hatchling resolve at setup time. | Future setups may build with different tool versions. | Inherited (bundle) |
-| 17 | Pango headers fallback | `.s01-sysroot` needs the Ubuntu archive and installed runtime versions that are still listed there. It works on Ubuntu/dpkg systems only. | Offline setup, upgraded runtime libraries, non-Ubuntu hosts. | Environment |
+| 17 | Pango headers fallback | `.pango-sysroot` needs the Ubuntu archive and installed runtime versions that are still listed there. It works on Ubuntu/dpkg systems only. | Offline setup, upgraded runtime libraries, non-Ubuntu hosts. | Environment |
 | 18 | Setup needs network and the image's CA | The package index (and the Ubuntu archive for the fallback) must be reachable. uv needs `SSL_CERT_FILE` because of the egress proxy. | Offline machines, or environments that drop `SSL_CERT_FILE`. | Environment |
 | 19 | Warnings in output | "SoX could not be found" appears at import, pydub's `audioop` deprecation warning appears in tests, and Manim reports unused `shortest`/`metadata` options when rendering. | Noise only; no effect on results. | Inherited |
 
@@ -130,13 +133,13 @@ Measured with 48 kHz 16-bit stereo recordings (about 11 MiB per minute):
 | 10 min | 110 MiB | 330 MiB | 708 MiB |
 | 20 min | 220 MiB | 659 MiB | not measured |
 
-- **Service (S01):** the file's bytes, its validated samples and pydub's decoded copy are held at the same time during validation, which is 3.0x the file size. This happens on every render, including cache hits, because each render re-reads and re-checks the recording.
+- **Service (Local WAV):** the file's bytes, its validated samples and pydub's decoded copy are held at the same time during validation, which is 3.0x the file size. This happens on every render, including cache hits, because each render re-reads and re-checks the recording.
 - **Manim (inherited):** Manim also holds the mixed soundtrack in memory and encodes it. The 10-minute render needed about 550 MiB above the baseline, about 5x the file size in total.
 - **Planning:** allow at least 5x the file size plus about 160 MiB per render. An hour of 48 kHz stereo (about 660 MiB) would need about 2 GiB for validation alone; this is an estimate from the measured 3.0x, not a measurement. Mono and lower sample rates scale down in proportion (22.05 kHz mono is about 2.5 MiB per minute). The supplied fixtures are under 0.3 MiB each.
 
 ### Why the example ends with a 0.25 s hold
 
-The hold after the voiceover in `examples/s01_baseline.py` is required. Manim renders whole frames, so the encoded video does not end exactly where the recording ends. Measured at the example's 15 fps:
+The hold after the voiceover in `examples/local_wav_baseline.py` is required. Manim renders whole frames, so the encoded video does not end exactly where the recording ends. Measured at the example's 15 fps:
 
 | Take | Recording | Video without hold | Video with the 0.25 s hold |
 |---|---|---|---|
@@ -147,11 +150,11 @@ Without the hold, the video ends before the narration and `verify` fails, becaus
 
 ### Historical task-sandbox verification
 
-The observations below were imported from the task sandbox. They are not claims that these experiments were all repeated during repository integration. The [local integration record](../local_setup/s01-validation.md) documents the current checks: a fresh `.venv` setup using system Pango headers, 158 focused tests, 237 full-suite tests and both verified renders.
+The observations below were imported from the task sandbox. They are not claims that these experiments were all repeated during repository integration. The [local integration record](history/s01-validation.md) documents the current checks: a fresh `.venv` setup using system Pango headers, 158 focused tests, 237 full-suite tests and both verified renders.
 
 Tested in the task sandbox:
 
-- 135 automated tests (`bash scripts/s01.sh test`), of which 11 are real Manim renders (`-m integration`): plain mono and stereo files, the two FFmpeg layouts with and without FFmpeg, plain files without FFmpeg, and a surround file that is rejected before rendering.
+- 135 automated tests (the task's focused test command at the time), of which 11 are real Manim renders (`-m integration`): plain mono and stereo files, the two FFmpeg layouts with and without FFmpeg, plain files without FFmpeg, and a surround file that is rejected before rendering.
 - `render a` and `render b` with verification. A separate full-waveform check gave correlation 0.991 for each take with its own audio, and below 0.1 against the other take.
 - Cache reuse across real renders (a → b → a → b): cached copies were not rewritten (same inode, mtime and ctime).
 - Setup from scratch in a fresh copy with a new `.venv` and an empty uv cache, using the project-local Pango headers.
@@ -163,7 +166,7 @@ Tested in the task sandbox:
 Not verified in that task-sandbox record (see the local integration record for subsequent checks):
 
 - Setup re-run from scratch after the incomplete-frame and FFmpeg-layout changes. Those changes did not touch setup, apart from `doctor` output.
-- The system-wide `libpango1.0-dev` path (no root here), and the failure branches of `scripts/s01_pango_sysroot.sh`.
+- The system-wide `libpango1.0-dev` path (no root here), and the failure branches of `scripts/pango_sysroot.sh`.
 - Python 3.11 and 3.13 (the package declares them; 3.13 needs `audioop-lts`) and other distributions. Running setup, tests or renders on macOS or Windows; on Windows, only playback of the produced videos was checked.
 - The `avconv`/`avprobe` alternatives accepted by pydub. The official renders with FFmpeg hidden (their fixtures are plain WAVs).
 - Parallel renders sharing one media folder; recordings much larger than 110 MiB.
@@ -176,7 +179,7 @@ Not verified in that task-sandbox record (see the local integration record for s
 |---|---|---|---|
 | Python 3.12, uv | Everything | Present (3.12.3, uv 0.9.10) | Re-lock only with uv >= 0.13; uv 0.9/0.11 downgrade the lock format and rewrite about 400 lines |
 | `build-essential`, `pkg-config`, `python3.12-dev`, `libcairo2-dev` | Building `pycairo` and `manimpango` (no Linux wheels) | Present | None needed |
-| Pango development files (`pangocairo >= 1.30`) | Building `manimpango` | **Missing** | `setup` runs `scripts/s01_pango_sysroot.sh` (no root). Alternative: install `libpango1.0-dev` (needs admin). |
+| Pango development files (`pangocairo >= 1.30`) | Building `manimpango` | **Missing** | `setup` runs `scripts/pango_sysroot.sh` (no root). Alternative: install `libpango1.0-dev` (needs admin). |
 | Pango and Cairo runtime libraries | Text rendering at run time | Present | None needed |
 | Package index and build tools (Cython, setuptools, wheel, meson-python, meson, ninja, hatchling) | `setup` | Reachable; two pins missing | Lock substitutions (limitation 15) |
 | `SSL_CERT_FILE` | uv HTTPS through the egress proxy | Exported by the image | Keep it set |
@@ -187,8 +190,8 @@ Not verified in that task-sandbox record (see the local integration record for s
 ### Inherited and out-of-scope limitations
 
 - **Inherited:** 5 (Manim's in-memory mixing), 6 (no cache cleanup), 7, 10, 12, 13, 14, 16 and 19. These come from manim-voiceover, pydub, Manim/PyAV or the original bundle and would affect any speech service.
-- **Out of scope by the S01 request:** 1 (multi-clip), 2 (other formats), 3 (speed adjustment) and 4 (transcription); also microphones and speech APIs.
+- **Out of scope by the Local WAV Narration request:** 1 (multi-clip), 2 (other formats), 3 (speed adjustment) and 4 (transcription); also microphones and speech APIs.
 - **Environment:** 15, 17 and 18 follow from the Taiga image and its package index.
-- **S01 design choices:** 5 (whole file held during validation), 6 (one copy per content and transcript), 8 and 11 (mono and stereo only; a decision prompted by Manim's inherited stereo downmix). Item 9 is inherent to the WAV format.
+- **Local WAV design choices:** 5 (whole file held during validation), 6 (one copy per content and transcript), 8 and 11 (mono and stereo only; a decision prompted by Manim's inherited stereo downmix). Item 9 is inherent to the WAV format.
 
 Only files under the workspace are part of the uploaded project. Generated environments, media and caches are covered by `.gitignore`.

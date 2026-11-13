@@ -513,7 +513,7 @@ def test_missing_or_damaged_cached_copy_is_restored(source, cache_dir, damage):
 # Regression: audio data that ends with an incomplete PCM frame
 # ---------------------------------------------------------------------------
 
-LIST_CHUNK = b"LIST" + struct.pack("<I", 16) + b"INFOISFT" + struct.pack("<I", 4) + b"s01\x00"
+LIST_CHUNK = b"LIST" + struct.pack("<I", 16) + b"INFOISFT" + struct.pack("<I", 4) + b"lwv\x00"
 ODD_CHUNK = b"junk" + struct.pack("<I", 3) + b"abc" + b"\x00"  # odd size, followed by its RIFF pad byte
 
 
@@ -848,7 +848,7 @@ def test_recording_that_pydub_would_decode_differently_is_rejected(tmp_path, cac
 
 
 # ---------------------------------------------------------------------------
-# Channel limit: S01 accepts mono and stereo narration only
+# Channel limit: the service accepts mono and stereo narration only
 # ---------------------------------------------------------------------------
 
 SURROUND = {

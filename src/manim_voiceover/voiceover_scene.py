@@ -172,11 +172,19 @@ class VoiceoverScene(Scene):
         """Waits until a bookmark is reached.
 
         Args:
-            mark (str): The `mark` attribute of the bookmark to wait for.
+            mark (str): The `mark` attribute of the bookmark to wait for, or the name of a
+                manual bookmark of the current recording (LocalWavService(..., bookmarks=...)).
         """
         if self.current_tracker is None:
             raise RuntimeError("No active voiceover tracker is available.")
-        self.safe_wait(self.current_tracker.time_until_bookmark(mark))
+        remaining = self.current_tracker.time_until_bookmark(mark)
+        if getattr(self.current_tracker, "manual_bookmarks", None) is not None:
+            # Manual bookmarks are exact times in the recording. Manim writes whole frames and
+            # rounds a wait down; round to the nearest frame instead, so the next animation
+            # starts within half a frame of the bookmark. A bookmark that has already passed
+            # still does not wait (the remaining time is then at most half a frame).
+            remaining += 0.5 / config["frame_rate"]
+        self.safe_wait(remaining)
 
     @contextmanager
     def voiceover(

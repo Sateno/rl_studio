@@ -1,8 +1,8 @@
-# S02 stable narration cues
+# Cue Bindings: stable narration cues
 
-S02 replaces the expected-reward lesson's single joined recording and list of durations with three stable cue IDs: `question`, `calculation` and `decision`. A versioned JSON manifest binds each ID to a WAV file. Rebinding one cue changes only that cue's recording; the scene, the transcripts and the other recordings stay the same.
+Cue Bindings replaces the expected-reward lesson's single joined recording and list of durations with three stable cue IDs: `question`, `calculation` and `decision`. A versioned JSON manifest binds each ID to a WAV file. Rebinding one cue changes only that cue's recording; the scene, the transcripts and the other recordings stay the same.
 
-Every cue is played through S01's `LocalWavService`, so S01's audio validation, source preservation and content-addressed caching apply unchanged (see [the S01 guide](s01.md)). The original lesson (`examples/rl_lessons/local_smoke.py`), its recordings and the S01 example are unchanged and remain regression baselines.
+Every cue is played through `LocalWavService` (Local WAV Narration), so its audio validation, source preservation and content-addressed caching apply unchanged (see [the Local WAV Narration guide](local_wav.md)). The original lesson (`examples/rl_lessons/local_smoke.py`), its recordings and the Local WAV Narration example (`examples/local_wav_baseline.py`) are unchanged and remain regression baselines. (Renaming that example changed its pinned hash once, deliberately.)
 
 **Status:** the resolver, text-only lesson, independent timeline and verifier are complete. The A → B → B sequence has been rendered and verified with one shared cache. B against A's expectations fails specifically on the calculation.
 
@@ -15,13 +15,15 @@ Every cue is played through S01's `LocalWavService`, so S01's audio validation, 
 | `src/manim_voiceover/services/cue_bindings.py` | Manifest loader and cue resolver |
 | `examples/rl_lessons/expected_reward_cues.py` | Text-only lesson scene `ExpectedRewardCues` |
 | `examples/rl_lessons/assets/expected_reward_cues.json` | Manifest A: sections 0, 2 and 3 of the lesson narration |
-| `fixtures/s02/calculation_alt.wav`, `.txt`, `info.json` | Candidate alternate calculation take, its exact text and its provenance |
-| `scripts/s02_timeline.py` | Independent expected timeline |
-| `scripts/verify_s02_render.py` | Render verifier |
-| `scripts/s02.sh` | Render, verify and cross-check commands |
-| `tests/test_s02_cue_bindings.py` | Resolver tests (220) |
-| `tests/test_s02_expected_reward.py` | Scene, timeline and candidate-take tests (32) |
-| `tests/test_s02_verifier.py` | Verifier tests (39) |
+| `fixtures/cue_bindings/calculation_alt.wav`, `.txt`, `info.json` | Candidate alternate calculation take, its exact text and its provenance |
+| `scripts/expected_reward_timeline.py` | Independent expected timeline |
+| `scripts/verify_cue_bindings_render.py` | Render verifier |
+| `scripts/dev.sh` (`cue-bindings`, `demo cue-bindings`) | Render, verify, cross-check and demo commands |
+| `scripts/render_workflow.sh`, `scripts/render_verification.py` | Shared render workflow (run records, source hashing) and measurements (frame rules, audio alignment) |
+| `tests/test_cue_bindings.py` | Resolver tests (220) |
+| `tests/test_expected_reward_lesson.py` | Scene, timeline and candidate-take tests (27) |
+| `tests/test_cue_bindings_verifier.py` | Verifier tests (33) |
+| `tests/test_render_workflow.py`, `tests/test_render_verification.py` | Shared workflow and measurement tests, including the generic frame-rule and alignment tests moved from the two files above |
 
 ## Manifest format (version 1)
 
@@ -51,12 +53,12 @@ from manim_voiceover.services.cue_bindings import load_cue_manifest
 manifest = load_cue_manifest("assets/expected_reward_cues.json")  # checks JSON, structure, IDs and names
 cues = manifest.resolve(("question", "calculation", "decision"))   # the scene's order
 for cue in cues:                                                     # cue.cue_id, cue.recording, cue.sha256, cue.duration
-    self.set_speech_service(cue.service())                           # an S01 LocalWavService
+    self.set_speech_service(cue.service())                           # a LocalWavService (Local WAV Narration)
 ```
 
 - The scene decides the order; the order in the file has no effect. The scene may request a cue more than once, and its recording is validated once.
-- Every requested recording is validated with S01's checks before `resolve` returns. An invalid selection therefore fails before anything is rendered or cached.
-- **Errors:** `CueManifestError` (invalid manifest), `DuplicateCueError`, `UnknownCueError` and `UnsafeRecordingPathError`. S01's `FileNotFoundError`, `InvalidRecordingError` and `AudioDecoderDependencyError` keep their type and message, and gain a note naming the cue and manifest.
+- Every requested recording is validated with the local WAV checks before `resolve` returns. An invalid selection therefore fails before anything is rendered or cached.
+- **Errors:** `CueManifestError` (invalid manifest), `DuplicateCueError`, `UnknownCueError` and `UnsafeRecordingPathError`. The local WAV errors `FileNotFoundError`, `InvalidRecordingError` and `AudioDecoderDependencyError` keep their type and message, and gain a note naming the cue and manifest.
 
 ## Lesson scene
 
@@ -66,18 +68,18 @@ for cue in cues:                                                     # cue.cue_i
 - `0.25(0) + 0.75(4) = 3`;
 - `3 > 2`.
 
-Each voiceover block lasts exactly as long as its recording. The panel fades in (0.4 s) during the block, and fades out (0.3 s) after it, except the last panel, which stays up through the final hold (0.25 s). The manifest is taken from `S02_CUE_MANIFEST`, or defaults to the tracked manifest A.
+Each voiceover block lasts exactly as long as its recording. The panel fades in (0.4 s) during the block, and fades out (0.3 s) after it, except the last panel, which stays up through the final hold (0.25 s). The manifest is taken from `CUE_BINDINGS_MANIFEST`, or defaults to the tracked manifest A.
 
 ## Alternate calculation take (candidate)
 
-`fixtures/s02/calculation_alt.wav` was generated offline with the speech engine already present in the environment. No package was installed.
+`fixtures/cue_bindings/calculation_alt.wav` was generated offline with the speech engine already present in the environment. No package was installed.
 
 | Property | Value |
 |---|---|
 | Text | `One quarter times zero, plus three quarters times four, gives an expected reward of three` (`calculation_alt.txt`, 89 bytes, no final period) |
 | Engine | FFmpeg 6.1.1 `flite` filter (libflite 2.2), voice `slt` (CMU US English, female, 16 kHz native) |
-| Command | `ffmpeg -f lavfi -i "flite=textfile=fixtures/s02/calculation_alt.txt:voice=slt" -ar 22050 -ac 1 -c:a pcm_s16le -fflags +bitexact -flags:a +bitexact -map_metadata -1 fixtures/s02/calculation_alt.wav` |
-| Format | Mono, 16-bit PCM, 22050 Hz, plain layout (`fmt ` and `data` only); S01 accepts it, and pydub reads it without FFmpeg |
+| Command | `ffmpeg -f lavfi -i "flite=textfile=fixtures/cue_bindings/calculation_alt.txt:voice=slt" -ar 22050 -ac 1 -c:a pcm_s16le -fflags +bitexact -flags:a +bitexact -map_metadata -1 fixtures/cue_bindings/calculation_alt.wav` |
+| Format | Mono, 16-bit PCM, 22050 Hz, plain layout (`fmt ` and `data` only); `LocalWavService` accepts it, and pydub reads it without FFmpeg |
 | Length | 132300 frames = 6.000 s (section 2: 7.303 s). The difference is 1.303 s = **19.55 frames at 15 fps** (at least 2 required) |
 | SHA-256 | `891215f01b289d0bb3272626d31ab3668638ed224187524ce5e76f9dd848e8d9` (section 2: `23a264b3...`) |
 | Processing | Sample-rate conversion 16000 → 22050 Hz only. **No padding, trimming or tempo change**: the native 16 kHz output is also exactly 6.000000 s, with the same leading (0.224 s) and trailing (0.176 s) silence. |
@@ -103,48 +105,51 @@ from the checkout in PowerShell:
 
 The last command selects the committed personal calculation take. It shares
 the Windows voiceover cache with the default render and writes its own video
-under `media/s02-windows/videos/expected_reward_cues/480p15/`. The WSL commands
+under `media/cue_bindings_windows/videos/expected_reward_cues/480p15/`. The WSL commands
 below produce the full A → B → B verification records.
 
 ## Linux and WSL commands
 
-Run from the repository root in Linux/WSL after `bash scripts/s01.sh setup`. S02 uses the same `.venv` and needs no new dependencies.
+Run from the repository root in Linux/WSL after `bash scripts/dev.sh setup`. Cue Bindings uses the same environment and needs no new dependencies. From Windows, `.\local-wsl.ps1 demo cue-bindings` runs the demo in WSL.
 
 ```bash
 # Tests
-.venv/bin/python -m pytest -q tests/test_s02_cue_bindings.py tests/test_s02_expected_reward.py tests/test_s02_verifier.py
-bash scripts/s01.sh test                      # S01 regression suite (158 tests)
-bash scripts/s01.sh render a && bash scripts/s01.sh render b
+bash scripts/dev.sh test                                    # focused suite, including all Cue Bindings tests
+UV_NO_DEV=1 uv run --frozen pytest -v tests/test_cue_bindings.py   # one file on its own
 
-# A -> B -> B with one shared cache (each render is verified automatically)
-bash scripts/s02.sh render a                  # run 01-a
-bash scripts/s02.sh render b                  # run 02-b: calculation rebound to the alternate take
-bash scripts/s02.sh render b                  # run 03-b: B again
+# The whole demo: A -> B -> B with one shared cache, each render verified, the three cross-checks
+# below, and a summary in media/cue_bindings/verification.json
+bash scripts/dev.sh demo cue-bindings
+
+# Or step by step (run numbers continue from the highest existing record)
+bash scripts/dev.sh cue-bindings render a                  # e.g. run 01-a
+bash scripts/dev.sh cue-bindings render b                  # run 02-b: calculation rebound to the alternate take
+bash scripts/dev.sh cue-bindings render b                  # run 03-b: B again
 
 # B must fail specifically on the calculation against A's expectations (and the reverse)
-bash scripts/s02.sh check-against 02-b 01-a
-bash scripts/s02.sh check-against 01-a 02-b
-bash scripts/s02.sh check-against 03-b 01-a
+bash scripts/dev.sh cue-bindings check-against 02-b 01-a
+bash scripts/dev.sh cue-bindings check-against 01-a 02-b
+bash scripts/dev.sh cue-bindings check-against 03-b 01-a
 
-# Re-verify a record later (the default is the latest run); results are never overwritten
-bash scripts/s02.sh verify 01-a
+# Re-verify a record later (the default is the highest-numbered run); results are never overwritten
+bash scripts/dev.sh cue-bindings verify 01-a
 
 # Independent timelines
-.venv/bin/python scripts/s02_timeline.py expect media/s02/cues/manifest-b.json
-.venv/bin/python scripts/s02_timeline.py compare media/s02/runs/01-a/expected.json media/s02/runs/02-b/expected.json
+.venv/bin/python scripts/expected_reward_timeline.py expect media/cue_bindings/cues/manifest-b.json
+.venv/bin/python scripts/expected_reward_timeline.py compare media/cue_bindings/runs/01-a/expected.json media/cue_bindings/runs/02-b/expected.json
 ```
 
 Each `render` takes about 25-50 s including verification, and each `check-against` or `verify` about 20 s.
 
 ## Working folder, shared cache, records and checks
 
-`scripts/s02.sh` never changes the original recordings:
+`scripts/dev.sh cue-bindings` never changes the original recordings:
 
-- It copies sections 0, 2 and 3, manifest A and, for B, the alternate take into `media/s02/cues/`. A file is copied only if its bytes differ, so unchanged copies keep their identity.
-- It generates manifest B (`media/s02/cues/manifest-b.json`) from manifest A, and asserts that only the `calculation` entry changes.
-- `media/s02` and its voiceover cache `media/s02/voiceovers/` are never cleared, so all renders share one cache.
+- It copies sections 0, 2 and 3, manifest A and, for B, the alternate take into `media/cue_bindings/cues/`. A file is copied only if its bytes differ, so unchanged copies keep their identity.
+- It generates manifest B (`media/cue_bindings/cues/manifest-b.json`) from manifest A, and asserts that only the `calculation` entry changes.
+- `media/cue_bindings` and its voiceover cache `media/cue_bindings/voiceovers/` are never cleared, so all renders share one cache.
 
-Each render gets a numbered record, `media/s02/runs/NN-take/`:
+Each render gets a numbered record, `media/cue_bindings/runs/NN-take/`. The number is one more than the highest existing record number, so deleting an earlier record never makes a later render reuse a number; other folders in `runs/` are ignored. Source files are hashed with NUL-separated names, so names (and the checkout path) may contain spaces, quotes, backslashes or newlines.
 
 | File | Written | Content |
 |---|---|---|
@@ -154,11 +159,11 @@ Each render gets a numbered record, `media/s02/runs/NN-take/`:
 | `sources-after.sha256`, `cache-after.json` | after rendering | As before; the render fails if any source changed |
 | `verification.json` | first verification | All checks and measurements |
 
-Results are never overwritten. A later `verify` of the same record is saved as `media/s02/checks/verify-RUN-TIMESTAMP.json`, and `check-against` as `media/s02/checks/RUN-against-OTHER.json`. The video is `media/s02/videos/expected_reward_cues/480p15/run-NN-take.mp4`, with Manim's uncompressed soundtrack (`.wav`) and subtitles (`.srt`) next to it.
+Results are never overwritten. A later `verify` of the same record is saved as `media/cue_bindings/checks/verify-RUN-TIMESTAMP.json`, and `check-against` as `media/cue_bindings/checks/RUN-against-OTHER.json`. The video is `media/cue_bindings/videos/expected_reward_cues/480p15/run-NN-take.mp4`, with Manim's uncompressed soundtrack (`.wav`) and subtitles (`.srt`) next to it.
 
 ## Expected timeline
 
-`scripts/s02_timeline.py` computes the timeline only from the WAV headers, the declared layout and Manim 0.20.1's frame rules. It does not import Manim, Manim Voiceover, the resolver or the scene. The rules (from Manim's source, confirmed by renders):
+`scripts/expected_reward_timeline.py` computes the timeline only from the WAV headers, the declared layout and Manim 0.20.1's frame rules. It does not import Manim, Manim Voiceover, the resolver or the scene. The rules (from Manim's source, confirmed by renders):
 
 - a run time or wait shorter than one frame is raised to one frame, and one of zero or less is rejected (`Scene.validate_run_time`);
 - an animation of run time `r` writes `len(numpy.arange(0, r, 1/fps))` frames;
@@ -182,13 +187,13 @@ In A, the calculation's wait is `int(6.9034 s × 15) = 103` frames. In B, the ta
 
 ## Verifier
 
-`scripts/verify_s02_render.py` measures a render and compares it with the expectations recorded before rendering. For three cues it runs 29 checks.
+`scripts/verify_cue_bindings_render.py` measures a render and compares it with the expectations recorded before rendering. For three cues it runs 29 checks.
 
 - **Each cue (5 checks):**
   - the recording is present sample for sample in Manim's uncompressed soundtrack;
   - the soundtrack onset is within the tolerance;
   - the MP4 onset is within the tolerance after the measured codec offset;
-  - the whole cue, and its final voiced second, correlate with the recording in the MP4 above 0.97 (as in S01).
+  - the whole cue, and its final voiced second, correlate with the recording in the MP4 above 0.97 (as for Local WAV Narration).
 - **Endings (4 checks):**
   - each cue finishes before the next starts; this is reported as not measurable, and failed, if either cue is missing;
   - the last recording finishes before the video ends, in the soundtrack and in the MP4 including the codec offset.
@@ -213,7 +218,7 @@ In A, the calculation's wait is `int(6.9034 s × 15) = 103` frames. In B, the ta
 
 ### Codec offset
 
-The MP4 audio is AAC at 48 kHz. FFmpeg's AAC encoder adds one codec frame (1024 samples, 21.333 ms) of priming at the start, and the MP4 does not signal it (edit list media time 0, `initial_padding` 0). Players therefore start the audio 21.3 ms late relative to the picture. This is inherited from Manim/FFmpeg and also applies to S01 renders. It was measured at 470 samples at 22050 Hz (21.315 ms) in every render.
+The MP4 audio is AAC at 48 kHz. FFmpeg's AAC encoder adds one codec frame (1024 samples, 21.333 ms) of priming at the start, and the MP4 does not signal it (edit list media time 0, `initial_padding` 0). Players therefore start the audio 21.3 ms late relative to the picture. This is inherited from Manim/FFmpeg and also applies to Local WAV Narration renders. It was measured at 470 samples at 22050 Hz (21.315 ms) in every render.
 
 ## Results: A → B → B
 
@@ -246,7 +251,7 @@ All three renders passed all 29 checks against their own pre-render expectations
 - A's three cached copies kept the same SHA-256, inode, size, mtime and ctime from creation through B, B again and a final snapshot.
 - B added one copy (the alternate take), unchanged through B again.
 - `cache.json` entries: 0 → 3 → 6 → 9.
-- Re-verifying A and B after B again passed (`media/s02/checks/`).
+- Re-verifying A and B after B again passed (`media/cue_bindings/checks/`).
 
 **Sources:**
 
@@ -254,10 +259,10 @@ All three renders passed all 29 checks against their own pre-render expectations
 - All WAV and JSON files in the repository, including the candidate take, were unchanged by B and B again.
 - Subtitle text is identical in all three renders; only B's timings differ from A's.
 
-**Preservation of A's files:** A's record, cached WAVs, working copies and final video, soundtrack and subtitles were not changed by B. Three kinds of files in `media/s02` were rewritten by later renders; none is a record, cached WAV or source:
+**Preservation of A's files:** A's record, cached WAVs, working copies and final video, soundtrack and subtitles were not changed by B. Three kinds of files in `media/cue_bindings` were rewritten by later renders; none is a record, cached WAV or source:
 
-- **Manim's text cache** (`media/s02/texts/*.svg`): rewritten with identical content.
-- **`cache.json`:** grew from 3 to 9 entries. S01 rewrites the whole file to append, so its identity changed, but its first three entries are byte-identical to A's file.
+- **Manim's text cache** (`media/cue_bindings/texts/*.svg`): rewritten with identical content.
+- **`cache.json`:** grew from 3 to 9 entries. LocalWavService rewrites the whole file to append, so its identity changed, but its first three entries are byte-identical to A's file.
 - **Manim's intermediate clips** (`partial_movie_files/ExpectedRewardCues/`): overwritten by each render, because Manim uses one folder per scene. A's intermediate clips are gone; its final MP4 is intact. No check uses them.
 
 ## Not verified
@@ -271,10 +276,10 @@ All three renders passed all 29 checks against their own pre-render expectations
 
 ## Limitations
 
-- **Cache expectations** are based on recording hashes. This assumes each recording is used with one fixed transcript, which holds for this lesson; the S01 cache key also includes the transcript.
+- **Cache expectations** are based on recording hashes. This assumes each recording is used with one fixed transcript, which holds for this lesson; the LocalWavService cache key also includes the transcript.
 - **Audio channels:** the verifier compares the first channel. All lesson recordings are mono.
 - **Intermediate clips:** Manim's intermediate clips are shared by all renders of the scene (see above). Separating them per run would need a per-run `partial_movie_dir`.
-- **Inherited from S01:** `cache.json` grows by one entry per voiceover and is rewritten on each append, and cached copies are never removed. `local_smoke.py` still needs `dvisvgm` to render its LaTeX, which is unchanged.
+- **Inherited from Local WAV Narration:** `cache.json` grows by one entry per voiceover and is rewritten on each append, and cached copies are never removed. `local_smoke.py` still needs `dvisvgm` to render its LaTeX, which is unchanged.
 
 ## Cloud integration validation
 
@@ -300,9 +305,9 @@ Google TTS test failed because the proxy denied `translate.google.com` with HTTP
 pass in this environment. No assertions or network tests were disabled.
 
 Formatting, Ruff lint, ty, strict mypy, Slophammer's static/duplication checks,
-and pip-audit passed. Fresh S02 A/B/B renders each passed all 29 verifier checks,
+and pip-audit passed. Fresh Cue Bindings A/B/B renders each passed all 29 verifier checks,
 and the B-against-A check failed specifically on the calculation as expected.
-Both S01 renders also passed their verification. Generated renders, caches,
+Both Local WAV Narration renders also passed their verification. Generated renders, caches,
 logs and the separate Taiga evidence bundle remain outside the Git change set.
 
 The candidate audio remains pending owner listening approval. This cloud validation ran on Linux.
@@ -310,6 +315,6 @@ The candidate audio remains pending owner listening approval. This cloud validat
 Mutation validation evaluated 3,599 variants on the final code: 3,591 were killed,
 none survived, and eight variants in the unchanged Stitcher service timed out
 around a cloud runtime slowdown. Those Stitcher variants had been killed in the
-earlier full run. The separate final resolver-only run killed all 131 S02
+earlier full run. The separate final resolver-only run killed all 131 Cue Bindings
 variants. The full mutation checker therefore remains non-green due to the
 eight timeouts; it is not reported as passed.
