@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# RL Studio developer commands for Linux and WSL. From Windows, use local.ps1, which runs them in WSL.
+# RL Studio developer commands for Linux and WSL. From Windows, use local-wsl.ps1, which runs them in WSL.
 #
 #   bash scripts/dev.sh doctor              # prerequisites
 #   bash scripts/dev.sh setup               # project environment from uv.lock, plus the pinned test runner

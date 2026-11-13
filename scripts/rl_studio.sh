@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Linux side of the Windows launcher (local.ps1). Uses the native setup: Conda Python
+# Linux side of the Windows launcher (local-wsl.ps1). Uses the native setup: Conda Python
 # (rl_studio_python) and the uv environment in Linux storage ($HOME/.virtualenvs/rl_studio).
 #
 #   bash scripts/rl_studio.sh setup        # same as sync: the environment from uv.lock (--no-dev --extra translate)
