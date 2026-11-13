@@ -36,7 +36,9 @@ try {
     }
     switch ($Action) {
         'sync' {
-            Invoke-Checked uv @('sync', '--frozen', '--no-dev', '--extra', 'translate', '--extra', 'recorder', '--extra', 'gtts',
+            Invoke-Checked uv @('sync', '--frozen', '--no-dev',
+                '--extra', 'translate', '--extra', 'recorder', '--extra', 'gtts',
+                '--extra', 'azure', '--extra', 'elevenlabs', '--extra', 'gemini', '--extra', 'openai', '--extra', 'pyttsx3',
                 '--python', (Join-Path $env:CONDA_PREFIX 'python.exe'))
             Invoke-Checked uv @('pip', 'install', '--python', $python, '-r', 'requirements-test.txt')
         }
