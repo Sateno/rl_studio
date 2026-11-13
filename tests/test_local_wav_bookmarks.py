@@ -36,6 +36,7 @@ from manim_voiceover.services.local_wav_bookmarks import (
     InvalidBookmarkNameError,
     InvalidBookmarkTimeError,
     UnknownBookmarkError,
+    bookmarks_from,
     load_bookmarks,
     parse_bookmarks,
 )
@@ -79,11 +80,12 @@ def cache_dir(tmp_path):
 
 
 def test_bookmarks_from_a_mapping_are_validated_and_read_only():
-    bookmarks = parse_bookmarks({"question": 0, "result": 1.25})
+    bookmarks = parse_bookmarks({"question": 0, "result": 1.25}, source="lesson timing")
 
     assert dict(bookmarks.times) == {"question": 0.0, "result": 1.25}
     assert all(type(seconds) is float for seconds in bookmarks.times.values())
     assert isinstance(bookmarks.times, MappingProxyType)
+    assert bookmarks.source == "lesson timing"
 
 
 def test_bookmarks_from_name_and_seconds_pairs_keep_their_order():
@@ -97,7 +99,9 @@ def test_bookmark_file_is_loaded(tmp_path, encoding):
     path = tmp_path / "bookmarks.json"
     path.write_text(json.dumps({"version": 1, "bookmarks": [{"name": "result", "seconds": 1.25}]}), encoding=encoding)
 
-    assert dict(load_bookmarks(path).times) == {"result": 1.25}
+    bookmarks = load_bookmarks(path)
+    assert dict(bookmarks.times) == {"result": 1.25}
+    assert bookmarks.source == str(path.absolute())
 
 
 @pytest.mark.parametrize("as_type", [str, Path], ids=["string_path", "path_object"])
@@ -133,7 +137,9 @@ INVALID_NAMES = {
 
 @pytest.mark.parametrize("name", INVALID_NAMES.values(), ids=INVALID_NAMES.keys())
 def test_invalid_bookmark_name_is_rejected(name):
-    with pytest.raises(InvalidBookmarkNameError, match="lowercase ASCII letters, digits or underscores"):
+    with pytest.raises(
+        InvalidBookmarkNameError, match="lowercase ASCII letters, digits or underscores, starting with a letter"
+    ):
         parse_bookmarks([(name, 1.0)])
 
 
@@ -167,7 +173,7 @@ def test_repeated_json_key_is_rejected(tmp_path, text):
     path = tmp_path / "bookmarks.json"
     path.write_text(text, encoding="utf-8")
 
-    with pytest.raises(BookmarkFileError, match="repeats a JSON key"):
+    with pytest.raises(BookmarkFileError, match=r"repeats a JSON key: .* \(duplicate key '(version|name)'\)$"):
         load_bookmarks(path)
 
 
@@ -184,8 +190,8 @@ INVALID_TIMES = {
 
 @pytest.mark.parametrize("seconds", INVALID_TIMES.values(), ids=INVALID_TIMES.keys())
 def test_invalid_bookmark_time_is_rejected(seconds):
-    with pytest.raises(InvalidBookmarkTimeError, match="'result'"):
-        parse_bookmarks({"result": seconds})
+    with pytest.raises(InvalidBookmarkTimeError, match=r"'result' \(lesson timing, entry 0\)"):
+        parse_bookmarks({"result": seconds}, source="lesson timing")
 
 
 @pytest.mark.parametrize("literal", ["NaN", "Infinity", "-Infinity"])
@@ -245,22 +251,33 @@ def test_missing_bookmark_file_is_a_file_not_found_error(tmp_path):
 
 
 @pytest.mark.parametrize(
-    "entry", [("result",), ("result", 1.0, "extra"), "result"], ids=["one_value", "three_values", "string"]
+    "entry",
+    [("result",), ("result", 1.0, "extra"), "ab", b"ab"],
+    ids=["one_value", "three_values", "two_character_string", "two_byte_string"],
 )
 def test_malformed_pair_is_rejected(entry):
-    with pytest.raises(BookmarkError, match=r"must be a \(name, seconds\) pair"):
-        parse_bookmarks([entry])
+    with pytest.raises(BookmarkError, match=r"^Bookmark entry 1 must be a \(name, seconds\) pair"):
+        parse_bookmarks([("result", 0.5), entry])
 
 
 @pytest.mark.parametrize("value", [42, b"bookmarks.json"], ids=["number", "bytes"])
 def test_bookmarks_of_an_unsupported_type_are_a_type_error(recording, cache_dir, value):
-    with pytest.raises(TypeError):
+    with pytest.raises(TypeError, match="^bookmarks must be a mapping, a sequence of .* or a bookmark file path$"):
         LocalWavService(recording, bookmarks=value, cache_dir=cache_dir)
 
 
+def test_bookmark_path_must_produce_a_text_path():
+    class BytesPath:
+        def __fspath__(self):
+            return b"bookmarks.json"
+
+    with pytest.raises(TypeError, match="^A bookmark file path must be a text path$"):
+        bookmarks_from(BytesPath())
+
+
 def test_bookmarks_constructed_directly_are_validated_again(recording, cache_dir):
-    with pytest.raises(InvalidBookmarkNameError):
-        LocalWavService(recording, bookmarks=Bookmarks(times={"Bad Name": 1.0}), cache_dir=cache_dir)
+    with pytest.raises(InvalidBookmarkNameError, match=r"\(lesson timing, entry 0\)"):
+        LocalWavService(recording, bookmarks=Bookmarks(times={"Bad Name": 1.0}, source="lesson timing"), cache_dir=cache_dir)
 
 
 # ---------------------------------------------------------------------------
@@ -374,14 +391,22 @@ def test_source_recording_and_bookmark_file_are_only_read(recording, cache_dir, 
 
 
 def test_bookmarks_cannot_be_combined_with_transcription(recording, cache_dir):
-    with pytest.raises(BookmarkError, match="cannot be combined with transcription_model"):
+    with pytest.raises(
+        BookmarkError, match="^Manual bookmarks cannot be combined with transcription_model; use one or the other$"
+    ):
         LocalWavService(recording, bookmarks={"result": 1.0}, transcription_model="base", cache_dir=cache_dir)
 
 
 def test_inline_bookmark_tags_cannot_be_combined_with_manual_bookmarks(recording, cache_dir):
     service = LocalWavService(recording, bookmarks={"result": 1.0}, cache_dir=cache_dir)
 
-    with pytest.raises(BookmarkError, match="use one or the other"):
+    with pytest.raises(
+        BookmarkError,
+        match=(
+            "^The voiceover text contains <bookmark mark=.*?/> tags, "
+            "but this recording has manual bookmarks; use one or the other$"
+        ),
+    ):
         voiceover_data(service, text="One quarter <bookmark mark='result'/> times zero.")
 
 
@@ -486,6 +511,9 @@ def test_text_bookmarks_of_transcribed_voiceovers_keep_rounding_down(tmp_path):
 
     assert scene.current_tracker.manual_bookmarks is None
     assert scene.waits == [pytest.approx(scene.current_tracker.bookmark_times["second"])]
+    # A legacy tracker can provide text bookmarks without a manual bookmark attribute.
+    del scene.current_tracker.manual_bookmarks
+    assert scene.current_tracker.time_until_bookmark("second") > 0
 
 
 # ---------------------------------------------------------------------------
