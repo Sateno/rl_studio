@@ -1,7 +1,7 @@
 """Speech service that plays a prerecorded local WAV file.
 
 The recording must be an uncompressed 16-bit PCM WAV file with one (mono) or
-two (stereo) channels; S01 is for narration, and Manim would downmix surround
+two (stereo) channels; the service is for narration, and Manim would downmix surround
 audio to stereo. It is played at normal speed, and the voiceover lasts exactly
 as long as the recording.
 
@@ -37,6 +37,8 @@ from pydub import utils as pydub_utils
 from manim_voiceover._typing import JsonValue, VoiceoverData
 from manim_voiceover.helper import remove_bookmarks
 from manim_voiceover.services.base import PathLike, SpeechService, initialize_speech_service, path_to_string
+from manim_voiceover.services.local_wav_bookmarks import Bookmarks, BookmarksInput, bookmarks_from
+from manim_voiceover.tracker import BookmarkError
 
 SERVICE_NAME = "local_wav"
 _SAMPLE_WIDTH_BYTES = 2
@@ -219,13 +221,27 @@ class LocalWavService(SpeechService):
             self.set_speech_service(LocalWavService("narration.wav"))
             with self.voiceover(text="Transcript of narration.wav") as tracker:
                 ...  # tracker.duration is the recording's duration
+
+    With manual bookmarks (seconds from the start of the recording), a scene can start
+    an animation at a named moment:
+
+        .. code-block:: python
+
+            self.set_speech_service(LocalWavService("narration.wav", bookmarks={"result": 4.57}))
+            with self.voiceover(text="Transcript of narration.wav"):
+                self.wait_until_bookmark("result")
+                self.play(FadeIn(result))
     """
 
-    def __init__(self, audio_path: PathLike, **kwargs: object) -> None:
+    def __init__(self, audio_path: PathLike, bookmarks: BookmarksInput | None = None, **kwargs: object) -> None:
         """
         Args:
             audio_path (str | os.PathLike): Local uncompressed 16-bit PCM WAV file.
                 It is validated here and again on every render, and never modified.
+            bookmarks: Optional manual bookmarks: a mapping of names to seconds, a sequence of
+                ``(name, seconds)`` pairs, or the path of a version 1 bookmark file (see
+                :mod:`manim_voiceover.services.local_wav_bookmarks`). Validated here against the
+                recording and again on every render. Without bookmarks the service behaves as before.
             **kwargs: Passed to :class:`SpeechService` (for example ``cache_dir``).
                 ``global_speed`` must stay 1.0 because the recording plays at normal speed.
 
@@ -234,9 +250,19 @@ class LocalWavService(SpeechService):
             InvalidRecordingError: The recording is empty, corrupt, not 16-bit PCM, or not mono/stereo.
             AudioDecoderDependencyError: The recording is valid, but its chunk layout needs the
                 FFmpeg command-line tools (ffmpeg and ffprobe) to be decoded, and they are missing.
+            BookmarkError: A bookmark is invalid, repeated or outside the recording (subclasses in
+                :mod:`manim_voiceover.services.local_wav_bookmarks`), or bookmarks are combined with
+                ``transcription_model``.
         """
         self.audio_path = Path(path_to_string(audio_path))
-        ensure_decodable(read_recording(self.audio_path), self.audio_path)
+        recording = read_recording(self.audio_path)
+        ensure_decodable(recording, self.audio_path)
+        self.bookmarks: Bookmarks | None = None
+        if bookmarks is not None:
+            if kwargs.get("transcription_model") is not None:
+                raise BookmarkError("Manual bookmarks cannot be combined with transcription_model; use one or the other")
+            self.bookmarks = bookmarks_from(bookmarks)
+            self.bookmarks.check_within(recording.duration, self.audio_path)
         initialize_speech_service(self, kwargs)
         if self.global_speed != 1.0:
             raise ValueError("LocalWavService plays the recording at normal speed; global_speed must be 1.0")
@@ -254,6 +280,13 @@ class LocalWavService(SpeechService):
 
         recording = read_recording(self.audio_path)
         ensure_decodable(recording, self.audio_path)
+        if self.bookmarks is not None:
+            if remove_bookmarks(text) != text:
+                raise BookmarkError(
+                    "The voiceover text contains <bookmark mark=.../> tags, but this recording has manual bookmarks; "
+                    "use one or the other"
+                )
+            self.bookmarks.check_within(recording.duration, self.audio_path)  # the recording may have been replaced
         input_data: dict[str, JsonValue] = {
             "input_text": remove_bookmarks(text),
             "service": SERVICE_NAME,
@@ -264,7 +297,7 @@ class LocalWavService(SpeechService):
         cached_audio = None if cached_result is None else cached_result.get("original_audio")
         if cached_result is not None and cached_audio is not None:
             if _is_intact_copy(Path(cache_dir) / cached_audio, recording.sha256):
-                return cached_result
+                return self._with_bookmarks(cached_result)
 
         audio_path = self._output_name(input_data, path, cached_audio)
         destination = Path(cache_dir) / audio_path
@@ -277,7 +310,17 @@ class LocalWavService(SpeechService):
             "input_data": input_data,
             "original_audio": audio_path,
         }
-        return json_dict
+        return self._with_bookmarks(json_dict)
+
+    def _with_bookmarks(self, data: VoiceoverData) -> VoiceoverData:
+        """``data`` with this service's manual bookmarks, if any (never bookmarks of an earlier render)."""
+        if self.bookmarks is None and "manual_bookmarks" not in data:
+            return data
+        result: VoiceoverData = {**data}
+        result.pop("manual_bookmarks", None)
+        if self.bookmarks is not None:
+            result["manual_bookmarks"] = dict(self.bookmarks.times)
+        return result
 
     def _output_name(self, input_data: dict[str, JsonValue], path: PathLike | None, cached_audio: str | None) -> str:
         if path is not None:

@@ -19,7 +19,7 @@
   "generation": {
     "engine": "FFmpeg 6.1.1-3ubuntu5 'flite' audio source filter (built with --enable-libflite), libflite1 2.2-6build3",
     "voice": "slt (CMU US English, female; 16000 Hz native)",
-    "command": "ffmpeg -f lavfi -i \"flite=textfile=fixtures/s02/calculation_alt.txt:voice=slt\" -ar 22050 -ac 1 -c:a pcm_s16le -fflags +bitexact -flags:a +bitexact -map_metadata -1 fixtures/s02/calculation_alt.wav",
+    "command": "ffmpeg -f lavfi -i \"flite=textfile=fixtures/cue_bindings/calculation_alt.txt:voice=slt\" -ar 22050 -ac 1 -c:a pcm_s16le -fflags +bitexact -flags:a +bitexact -map_metadata -1 fixtures/cue_bindings/calculation_alt.wav",
     "processing": "Sample-rate conversion 16000 -> 22050 Hz by FFmpeg only. No padding, no trimming, no tempo or pitch change: the native 16000 Hz output is also exactly 6.000000 s (96000 samples).",
     "deterministic": "Regenerating with the same command gives a byte-identical file."
   },

@@ -23,7 +23,7 @@ device names that Windows reserves, and names ending in a dot or space are
 rejected. After symbolic links are resolved, the recording must still be inside
 the manifest directory.
 
-Recordings are checked and played by :class:`LocalWavService` (S01), so its
+Recordings are checked and played by :class:`LocalWavService` (Local WAV Narration), so its
 validation, source preservation and content-addressed caching apply unchanged.
 The SHA-256 and duration recorded when a cue is resolved are evidence of which
 recording was selected; the manifest itself does not contain hashes.
@@ -45,6 +45,7 @@ from manim_voiceover.services.local_wav import (
     ensure_decodable,
     read_recording,
 )
+from manim_voiceover.services.local_wav_bookmarks import BookmarksInput
 
 MANIFEST_VERSION = 1
 _MANIFEST_ENCODING = "utf-8-sig"  # UTF-8, accepting the optional Windows BOM.
@@ -172,16 +173,19 @@ def _parse_bindings(document: JsonValue, source: Path) -> dict[str, str]:
 
 @dataclass(frozen=True)
 class ResolvedCue:
-    """A cue whose recording exists, is inside the manifest directory and passed S01 validation."""
+    """A cue whose recording exists, is inside the manifest directory and passed local WAV validation."""
 
     cue_id: str
     recording: Path
     sha256: str
     duration: float
 
-    def service(self, **kwargs: object) -> LocalWavService:
-        """A :class:`LocalWavService` for this cue's recording; ``kwargs`` are passed on (for example ``cache_dir``)."""
-        return LocalWavService(self.recording, **kwargs)
+    def service(self, *, bookmarks: BookmarksInput | None = None, **kwargs: object) -> LocalWavService:
+        """A :class:`LocalWavService` for this cue's recording, with optional manual ``bookmarks``.
+
+        ``kwargs`` are passed on (for example ``cache_dir``).
+        """
+        return LocalWavService(self.recording, bookmarks=bookmarks, **kwargs)
 
 
 @dataclass(frozen=True)
@@ -204,7 +208,7 @@ class CueManifest:
             UnknownCueError: A requested cue is not bound in the manifest.
             UnsafeRecordingPathError: A recording resolves outside the manifest directory.
             FileNotFoundError, InvalidRecordingError, AudioDecoderDependencyError:
-                From S01's recording validation, with a note naming the cue.
+                From the local WAV recording validation, with a note naming the cue.
         """
         self._check_order(cue_order)
         resolved = {cue_id: self._resolve_cue(cue_id) for cue_id in dict.fromkeys(cue_order)}

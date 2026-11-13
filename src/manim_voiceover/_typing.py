@@ -56,3 +56,4 @@ class VoiceoverData(TypedDict, total=False):
     final_audio: str
     json_path: str
     transcribed_text: str
+    manual_bookmarks: dict[str, float]

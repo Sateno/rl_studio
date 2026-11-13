@@ -6,15 +6,15 @@
 # No administrator access and no system-wide changes: the Ubuntu -dev packages
 # that match the INSTALLED runtime libraries exactly are downloaded with apt
 # (signed archive index; each .deb is also checked against its SHA-256 there)
-# and unpacked into the git-ignored .s01-sysroot/ folder. They are only used to
+# and unpacked into the git-ignored .pango-sysroot/ folder. They are only used to
 # compile manimpango; the compiled module links the system libraries, so the
 # virtual environment does not depend on this folder afterwards.
 #
-# Usage: bash scripts/s01_pango_sysroot.sh             # create or reuse the folder
-#        bash scripts/s01_pango_sysroot.sh --pkg-config-path
+# Usage: bash scripts/pango_sysroot.sh             # create or reuse the folder
+#        bash scripts/pango_sysroot.sh --pkg-config-path
 set -euo pipefail
 ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-SYSROOT="$ROOT/.s01-sysroot"
+SYSROOT="$ROOT/.pango-sysroot"
 TREE="$SYSROOT/root"
 MULTIARCH="$(gcc -print-multiarch 2>/dev/null || echo x86_64-linux-gnu)"
 SYSTEM_LIBDIR="/usr/lib/$MULTIARCH"
@@ -38,7 +38,7 @@ if [[ "${1:-}" == --pkg-config-path ]]; then
   exit 0
 fi
 
-fail() { echo "s01_pango_sysroot: $*" >&2; exit 1; }
+fail() { echo "pango_sysroot: $*" >&2; exit 1; }
 
 for tool in apt-get apt-cache dpkg-query dpkg-deb pkg-config sha256sum cc; do
   command -v "$tool" >/dev/null 2>&1 || fail "required tool '$tool' is not available"

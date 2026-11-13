@@ -1,4 +1,7 @@
-"""S01: a local 16-bit PCM WAV recording played through LocalWavService."""
+"""Local WAV Narration: a local 16-bit PCM WAV recording played through LocalWavService.
+
+The recording is taken from LOCAL_WAV_AUDIO, or defaults to fixtures/take_a.wav.
+"""
 
 import os
 from pathlib import Path
@@ -19,11 +22,11 @@ HOLD_SECONDS = 0.25
 
 class BaselineRecording(VoiceoverScene):
     def construct(self) -> None:
-        audio_path = Path(os.environ.get("S01_AUDIO", str(ROOT / "fixtures" / "take_a.wav")))
+        audio_path = Path(os.environ.get("LOCAL_WAV_AUDIO", str(ROOT / "fixtures" / "take_a.wav")))
         self.set_speech_service(LocalWavService(audio_path))
         self.camera.background_color = "#101827"
         self.add(
-            Text("S01 local recording", font_size=42, color="#8BD5CA").shift(UP),
+            Text("Local WAV narration", font_size=42, color="#8BD5CA").shift(UP),
             Text("Local WAV through LocalWavService", font_size=28).shift(DOWN * 0.3),
         )
         # The voiceover block lasts exactly as long as the recording.

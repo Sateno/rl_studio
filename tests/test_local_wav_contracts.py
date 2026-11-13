@@ -1,4 +1,4 @@
-"""Repository-level edge and diagnostic contracts for the imported S01 service."""
+"""Repository-level edge and diagnostic contracts for the local WAV service (LocalWavService)."""
 
 import json
 import struct
