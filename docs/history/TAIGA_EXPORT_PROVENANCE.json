@@ -1,0 +1,126 @@
+{
+  "commit": "4cc203cf4622fd67c686a8cf825789a8ed1e0334",
+  "ref": "origin/dev",
+  "export": "full Git archive, with documented exclusions",
+  "excluded_tracked_files": [
+    "AGENTS.md",
+    "examples/rl_lessons/assets/calculation_my_voice.wav",
+    "examples/rl_lessons/assets/expected_reward_my_voice.json",
+    "local_setup/dependency-audit.txt"
+  ],
+  "sanitized_files": [
+    "docs/source/_static/select_transifex_repo.png",
+    "docs/source/_static/transifex_explanation.png",
+    "examples/translation-example/locale/de/LC_MESSAGES/translation-example.mo",
+    "examples/translation-example/locale/de/LC_MESSAGES/translation-example.po",
+    "examples/translation-example/locale/translation-example.pot",
+    "examples/translation-example/locale/vi/LC_MESSAGES/translation-example.mo",
+    "examples/translation-example/locale/vi/LC_MESSAGES/translation-example.po",
+    "pyproject.toml",
+    "tests/test_s02_cue_bindings.py"
+  ],
+  "alternate_calculation": "included; words/listening/approval require human review",
+  "wav_inventory": {
+    "docs/source/_static/click.wav": {
+      "sha256": "e83883142d2b99686457908e2f99cf45d5ab9de494acae440c362621f58a4251",
+      "channels": 2,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 44100,
+      "frames": 26519,
+      "seconds": 0.6013378684807256,
+      "compression": "NONE"
+    },
+    "examples/rl_lessons/assets/pilot.wav": {
+      "sha256": "472b69fab7309701eb51b923bcd5be67958f22f43e00b43d400249d40882a735",
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 22050,
+      "frames": 942004,
+      "seconds": 42.721269841269844,
+      "compression": "NONE"
+    },
+    "examples/rl_lessons/assets/section_0.wav": {
+      "sha256": "054e095cc4176e37fdfd48a2e8d5024c7b6a634e354d598e2b37f861c934a6d7",
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 22050,
+      "frames": 265874,
+      "seconds": 12.057777777777778,
+      "compression": "NONE"
+    },
+    "examples/rl_lessons/assets/section_1.wav": {
+      "sha256": "a3e4606654c37e775723041216b341b470ddad0b171d2ee2b92a0d644ad6648d",
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 22050,
+      "frames": 171621,
+      "seconds": 7.783265306122449,
+      "compression": "NONE"
+    },
+    "examples/rl_lessons/assets/section_2.wav": {
+      "sha256": "23a264b385bab216e832b3d7b98e9b09e96237b43beeafc063284ae1874f20b2",
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 22050,
+      "frames": 161039,
+      "seconds": 7.303356009070295,
+      "compression": "NONE"
+    },
+    "examples/rl_lessons/assets/section_3.wav": {
+      "sha256": "bae895aab3f02e806087829c8fe68c88626a8722769ad5cfd1f8c5174b1a9c4a",
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 22050,
+      "frames": 317010,
+      "seconds": 14.37687074829932,
+      "compression": "NONE"
+    },
+    "examples/rl_lessons/assets/take_a.wav": {
+      "sha256": "0ea70d61a12b90e79dae7fd91d3d2abfa93dab94188e59645a6ca7dbe7f95d77",
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 22050,
+      "frames": 126656,
+      "seconds": 5.744036281179138,
+      "compression": "NONE"
+    },
+    "examples/rl_lessons/assets/take_b.wav": {
+      "sha256": "74db0b5b1648e0add47641916a988e92822488ced7af0c93cde8fc894a4ce44e",
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 22050,
+      "frames": 104762,
+      "seconds": 4.751111111111111,
+      "compression": "NONE"
+    },
+    "fixtures/s02/calculation_alt.wav": {
+      "sha256": "891215f01b289d0bb3272626d31ab3668638ed224187524ce5e76f9dd848e8d9",
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 22050,
+      "frames": 132300,
+      "seconds": 6.0,
+      "compression": "NONE"
+    },
+    "fixtures/take_a.wav": {
+      "sha256": "0ea70d61a12b90e79dae7fd91d3d2abfa93dab94188e59645a6ca7dbe7f95d77",
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 22050,
+      "frames": 126656,
+      "seconds": 5.744036281179138,
+      "compression": "NONE"
+    },
+    "fixtures/take_b.wav": {
+      "sha256": "74db0b5b1648e0add47641916a988e92822488ced7af0c93cde8fc894a4ce44e",
+      "channels": 1,
+      "sample_width_bytes": 2,
+      "sample_rate_hz": 22050,
+      "frames": 104762,
+      "seconds": 4.751111111111111,
+      "compression": "NONE"
+    }
+  },
+  "privacy_scan": "No unresolved configured-pattern findings. Media and unrecognized personal data require human review.",
+  "validation": "Packaging only; application setup/tests/renders not executed by this script."
+}

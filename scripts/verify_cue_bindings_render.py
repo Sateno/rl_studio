@@ -1,7 +1,7 @@
-"""Verify an S02 render against the expectations recorded BEFORE it was rendered.
+"""Verify a Cue Bindings render against the expectations recorded BEFORE it was rendered.
 
-A render record (media/s02/runs/NN-take, written by scripts/s02.sh) holds expected.json
-(the independent timeline from scripts/s02_timeline.py, with its tolerance),
+A render record (media/cue_bindings/runs/NN-take, written by `scripts/dev.sh cue-bindings render`) holds
+expected.json (the independent timeline from scripts/expected_reward_timeline.py, with its tolerance),
 cache-before.json and sources-before.sha256, all written before rendering, and
 cache-after.json and sources-after.sha256, written after it. This script measures the
 render and compares:
@@ -31,27 +31,36 @@ every check of the cues before CUE, the codec check and the record checks still 
 only checks that CUE's recording can affect fail (CUE, later cues, video length, cache).
 
 Usage:
-    python scripts/verify_s02_render.py verify media/s02/runs/01-a
-    python scripts/verify_s02_render.py verify media/s02/runs/02-b --expected media/s02/runs/01-a/expected.json \
-        --expect-mismatch calculation --output media/s02/checks/02-b-against-01-a.json
-    python scripts/verify_s02_render.py snapshot-cache media/s02/voiceovers
+    python scripts/verify_cue_bindings_render.py verify media/cue_bindings/runs/01-a
+    python scripts/verify_cue_bindings_render.py verify media/cue_bindings/runs/02-b \
+        --expected media/cue_bindings/runs/01-a/expected.json \
+        --expect-mismatch calculation --output media/cue_bindings/checks/02-b-against-01-a.json
+    python scripts/verify_cue_bindings_render.py snapshot-cache media/cue_bindings/voiceovers
+
+Shared measurements and Manim's frame rules are in scripts/render_verification.py.
 """
 
 import argparse
-import hashlib
 import json
-import os
 import sys
-import wave
 from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
-import av
 import numpy as np
+from render_verification import (
+    CORRELATION_THRESHOLD,
+    check,
+    correlation,
+    decode_mp4,
+    final_voiced_second,
+    locate,
+    measure_offset,
+    read_pcm16,
+    sha256_file,
+    snapshot_cache,
+)
 
-CORRELATION_THRESHOLD = 0.97  # as in the S01 render verifier
-VOICED_LEVEL = 128  # |sample| above which a 16-bit sample counts as voiced, as in the S01 verifier
 LESSON_VIDEO_DIR = Path("videos") / "expected_reward_cues" / "480p15"
 CODEC_CHECK = "codec offset is measured and equals one audio codec frame"
 RECORD_CHECKS = (
@@ -59,97 +68,6 @@ RECORD_CHECKS = (
     "sources unchanged during the render",
     "recordings are the ones the expected timeline was computed from",
 )
-
-
-# ---------------------------------------------------------------------------
-# Reading
-# ---------------------------------------------------------------------------
-
-
-def sha256_file(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
-
-
-def snapshot_cache(cache: Path) -> dict[str, object]:
-    """SHA-256 and file identity of every cached WAV, and the number of cache.json entries."""
-    copies = {}
-    for path in sorted(cache.glob("*.wav")):
-        info = os.lstat(path)
-        copies[path.name] = {
-            "sha256": sha256_file(path),
-            "inode": info.st_ino,
-            "size": info.st_size,
-            "mtime_ns": info.st_mtime_ns,
-            "ctime_ns": info.st_ctime_ns,
-        }
-    index = cache / "cache.json"
-    entries = json.loads(index.read_text(encoding="utf-8")) if index.exists() else []
-    return {"copies": copies, "cache_json_entries": len(entries)}
-
-
-def read_pcm16(path: Path) -> tuple[np.ndarray, int]:
-    """First channel of a 16-bit PCM WAV file and its sample rate."""
-    with wave.open(str(path), "rb") as audio:
-        if audio.getsampwidth() != 2:
-            raise ValueError(f"{path} is not 16-bit PCM")
-        samples = np.frombuffer(audio.readframes(audio.getnframes()), dtype="<i2")
-        return samples.reshape(-1, audio.getnchannels())[:, 0], audio.getframerate()
-
-
-def decode_mp4(video: Path, rate: int) -> dict[str, object]:
-    """Decoded video frame count, and the audio resampled to ``rate`` (mono) with the codec's frame size."""
-    with av.open(str(video)) as container:
-        stream = container.streams.audio[0]
-        codec = {"name": stream.codec_context.name, "rate": stream.rate, "frame_size": stream.codec_context.frame_size}
-        resampler = av.AudioResampler(format="s16", layout="mono", rate=rate)
-        chunks = []
-        for frame in container.decode(audio=0):
-            chunks.extend(part.to_ndarray().reshape(-1) for part in resampler.resample(frame))
-        chunks.extend(part.to_ndarray().reshape(-1) for part in resampler.resample(None))
-    with av.open(str(video)) as container:
-        frames = sum(1 for _ in container.decode(video=0))
-    return {"audio": np.concatenate(chunks), "video_frames": frames, "codec": codec}
-
-
-# ---------------------------------------------------------------------------
-# Measuring
-# ---------------------------------------------------------------------------
-
-
-def _correlation_scores(reference: np.ndarray, track: np.ndarray) -> np.ndarray:
-    size = len(track) + len(reference)
-    return np.fft.irfft(np.fft.rfft(track.astype(float), size) * np.conj(np.fft.rfft(reference.astype(float), size)), size)
-
-
-def locate(reference: np.ndarray, track: np.ndarray) -> int:
-    """Sample offset in ``track`` where ``reference`` matches best (reference fully inside track)."""
-    if len(reference) > len(track):
-        return 0
-    return int(np.argmax(_correlation_scores(reference, track)[: len(track) - len(reference) + 1]))
-
-
-def measure_offset(reference: np.ndarray, delayed: np.ndarray) -> int:
-    """Signed lag, in samples, of ``delayed`` relative to ``reference`` (positive: ``delayed`` is later)."""
-    scores = _correlation_scores(reference, delayed)
-    lag = int(np.argmax(scores))
-    return lag - len(scores) if lag > len(scores) // 2 else lag
-
-
-def correlation(first: np.ndarray, second: np.ndarray) -> float:
-    length = min(len(first), len(second))
-    a, b = first[:length].astype(float), second[:length].astype(float)
-    norm = float(np.linalg.norm(a) * np.linalg.norm(b))
-    return float(a @ b / norm) if norm else 0.0
-
-
-def final_voiced_second(source: np.ndarray, rate: int) -> tuple[int, int]:
-    voiced = np.flatnonzero(np.abs(source.astype(int)) > VOICED_LEVEL)
-    last = int(voiced[-1]) if len(voiced) else len(source) - 1
-    return max(0, last - rate), last + 1
-
-
-def check(name: str, passed: bool, **details: object) -> dict[str, object]:
-    return {"check": name, "passed": bool(passed), **details}
 
 
 # ---------------------------------------------------------------------------
@@ -414,9 +332,61 @@ def write_new(path: Path, text: str) -> None:
 
 
 def default_paths(record: Path) -> tuple[Path, Path, Path]:
-    """Video, working folder and cache of a record in the scripts/s02.sh layout (MEDIA/runs/NAME)."""
+    """Video, working folder and cache of a record in the cue-bindings layout of scripts/dev.sh (MEDIA/runs/NAME)."""
     media = record.resolve().parent.parent
     return media / LESSON_VIDEO_DIR / f"run-{record.name}.mp4", media / "cues", media / "voiceovers"
+
+
+def _load(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def demo_summary(media: Path, runs: Sequence[str], checks: Sequence[Path]) -> dict[str, object]:
+    """Summary of one A -> B -> B demo from its run records and mismatch checks (all already saved).
+
+    Passes when every render passed against its own expectations, every mismatch check failed
+    specifically on its cue, all renders used the one cache folder, the last render (B again)
+    added no cached copy, and the copies present after the first render are unchanged after the last.
+    """
+    records = []
+    for name in runs:
+        record = media / "runs" / name
+        result = _load(record / "verification.json")
+        before, after = _load(record / "cache-before.json"), _load(record / "cache-after.json")
+        records.append(
+            {
+                "run": name,
+                "passed": result["passed"],
+                "checks": len(result["checks"]),
+                "failures": result["failures"],
+                "video": result["video"],
+                "cached_copies_before": len(before["copies"]),
+                "cached_copies_after": len(after["copies"]),
+                "new_cached_copies": sorted(set(after["copies"]) - set(before["copies"])),
+                "cache_json_entries": [before["cache_json_entries"], after["cache_json_entries"]],
+            }
+        )
+    first_after = _load(media / "runs" / runs[0] / "cache-after.json")["copies"]
+    last_after = _load(media / "runs" / runs[-1] / "cache-after.json")["copies"]
+    mismatches = [{"check": str(path), **_load(path)["mismatch"]} for path in checks]
+    shared_cache = {
+        "folder": str(media / "voiceovers"),
+        "last_render_added_no_copy": not records[-1]["new_cached_copies"],
+        "first_render_copies_unchanged_after_last": all(last_after.get(name) == copy for name, copy in first_after.items()),
+    }
+    passed = (
+        all(record["passed"] for record in records)
+        and all(mismatch["specific"] for mismatch in mismatches)
+        and shared_cache["last_render_added_no_copy"]
+        and shared_cache["first_render_copies_unchanged_after_last"]
+    )
+    return {
+        "demo": "cue-bindings A -> B -> B",
+        "passed": passed,
+        "runs": records,
+        "shared_cache": shared_cache,
+        "mismatch_checks": mismatches,
+    }
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -428,11 +398,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     run.add_argument("--expect-mismatch", metavar="CUE", help="with --expected: the check must fail specifically on CUE")
     run.add_argument("--output", type=Path, help="save the result to this new file")
     commands.add_parser("snapshot-cache").add_argument("cache", type=Path)
+    summarize = commands.add_parser("summarize-demo", help="summarize an A -> B -> B demo from its saved records")
+    summarize.add_argument("media", type=Path)
+    summarize.add_argument("runs", nargs=3, metavar="RUN")
+    summarize.add_argument("--checks", type=Path, nargs="+", required=True)
+    summarize.add_argument("--output", type=Path, required=True)
     arguments = parser.parse_args(argv)
     if arguments.command == "snapshot-cache":
         json.dump(snapshot_cache(arguments.cache), sys.stdout, indent=2)
         sys.stdout.write("\n")
         return 0
+    if arguments.command == "summarize-demo":
+        summary = demo_summary(arguments.media, arguments.runs, arguments.checks)
+        arguments.output.write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
+        print(f"{'PASSED' if summary['passed'] else 'FAILED'}: cue-bindings demo; summary {arguments.output}", file=sys.stderr)
+        return 0 if summary["passed"] else 1
     if arguments.expect_mismatch and arguments.expected is None:
         parser.error("--expect-mismatch needs --expected")
     video, work, cache = default_paths(arguments.record)

@@ -1,8 +1,8 @@
-"""S02: the render verifier (scripts/verify_s02_render.py).
+"""Cue Bindings: the render verifier (scripts/verify_cue_bindings_render.py).
 
 Unit tests cover offset measurement and the codec-offset rule. The tests marked
 ``integration`` render the real lesson scene with SYNTHETIC recordings (band-limited
-seeded noise), following the same record steps as scripts/s02.sh, and check that the
+seeded noise), following the same record steps as `scripts/dev.sh cue-bindings render`, and check that the
 verifier passes correct renders and fails renders checked against the wrong
 calculation recording, renders whose ending is cut, and rewritten cached copies. The
 synthetic A -> B -> B flow tests the verifier's cache checks; it is not evidence for
@@ -21,10 +21,10 @@ import pytest
 from manim import tempconfig
 from scipy.signal import butter, lfilter
 
-from tests.test_s02_expected_reward import LESSON_FILE, ROOT, load_module, render_settings
+from tests.test_expected_reward_lesson import LESSON_FILE, ROOT, load_module, render_settings
 
 pytestmark = pytest.mark.skipif(
-    not (ROOT / "scripts" / "verify_s02_render.py").is_file(),
+    not (ROOT / "scripts" / "verify_cue_bindings_render.py").is_file(),
     reason="examples and scripts are not copied into mutmut's generated worktree",
 )
 SECONDS = {"question": 1.3, "calculation": 0.9, "decision": 1.1}
@@ -32,17 +32,17 @@ SECONDS = {"question": 1.3, "calculation": 0.9, "decision": 1.1}
 
 @pytest.fixture(scope="module")
 def verifier():
-    return load_module("s02_verifier", ROOT / "scripts" / "verify_s02_render.py")
+    return load_module("cue_bindings_verifier", ROOT / "scripts" / "verify_cue_bindings_render.py")
 
 
 @pytest.fixture(scope="module")
 def timeline():
-    return load_module("s02_timeline_for_verifier", ROOT / "scripts" / "s02_timeline.py")
+    return load_module("expected_reward_timeline_for_verifier", ROOT / "scripts" / "expected_reward_timeline.py")
 
 
 @pytest.fixture(scope="module")
 def lesson():
-    return load_module("s02_lesson_for_verifier", LESSON_FILE)
+    return load_module("expected_reward_lesson_for_verifier", LESSON_FILE)
 
 
 def write_band_limited(path, seconds, seed, rate=22050):
@@ -69,7 +69,7 @@ def sources_lines(directory):
 
 
 class Pipeline:
-    """scripts/s02.sh's record steps around a real render of the lesson scene, in a temporary media folder."""
+    """The record steps of `dev.sh cue-bindings render` around a real lesson render, in a temporary media folder."""
 
     def __init__(self, base, lesson, timeline, verifier):
         self.base, self.lesson, self.timeline, self.verifier = base, lesson, timeline, verifier
@@ -86,8 +86,8 @@ class Pipeline:
         (record / "expected.json").write_text(json.dumps(self.timeline.timeline_for_manifest(manifest)), encoding="utf-8")
         (record / "sources-before.sha256").write_text(sources_lines(self.work), encoding="utf-8")
         (record / "cache-before.json").write_text(json.dumps(self.verifier.snapshot_cache(self.cache)), encoding="utf-8")
-        previous_hold, previous_manifest = self.lesson.FINAL_HOLD_SECONDS, os.environ.get("S02_CUE_MANIFEST")
-        os.environ["S02_CUE_MANIFEST"] = str(manifest)
+        previous_hold, previous_manifest = self.lesson.FINAL_HOLD_SECONDS, os.environ.get("CUE_BINDINGS_MANIFEST")
+        os.environ["CUE_BINDINGS_MANIFEST"] = str(manifest)
         if hold is not None:
             self.lesson.FINAL_HOLD_SECONDS = hold
         try:
@@ -98,9 +98,9 @@ class Pipeline:
         finally:
             self.lesson.FINAL_HOLD_SECONDS = previous_hold
             if previous_manifest is None:
-                os.environ.pop("S02_CUE_MANIFEST", None)
+                os.environ.pop("CUE_BINDINGS_MANIFEST", None)
             else:
-                os.environ["S02_CUE_MANIFEST"] = previous_manifest
+                os.environ["CUE_BINDINGS_MANIFEST"] = previous_manifest
         (record / "sources-after.sha256").write_text(sources_lines(self.work), encoding="utf-8")
         (record / "cache-after.json").write_text(json.dumps(self.verifier.snapshot_cache(self.cache)), encoding="utf-8")
         return record, video
@@ -118,13 +118,6 @@ def failed(result):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("shift", [0, 1, 470, 1234, -300])
-def test_offset_is_measured_from_the_signals(verifier, shift):
-    reference = np.random.default_rng(5).integers(-5000, 5000, 20000).astype(np.int16)
-    delayed = np.concatenate([np.zeros(shift, np.int16), reference]) if shift >= 0 else reference[-shift:]
-    assert verifier.measure_offset(reference, delayed) == shift
-
-
 @pytest.mark.parametrize(
     "samples, explained",
     [(470, True), (471, True), (469, False), (472, False), (0, False), (940, False), (-470, False)],
@@ -132,13 +125,6 @@ def test_offset_is_measured_from_the_signals(verifier, shift):
 def test_codec_offset_must_equal_one_codec_frame_within_one_sample(verifier, samples, explained):
     codec = {"name": "aac", "rate": 48000, "frame_size": 1024}  # 470.4 samples at 22050 Hz: 470 and 471 are within one
     assert verifier.codec_check(samples, 22050, codec)["passed"] is explained
-
-
-def test_locate_finds_a_reference_inside_a_track(verifier):
-    reference = np.random.default_rng(2).integers(-5000, 5000, 3000).astype(np.int16)
-    track = np.concatenate([np.zeros(12345, np.int16), reference, np.zeros(777, np.int16)])
-    assert verifier.locate(reference, track) == 12345
-    assert verifier.locate(track, reference) == 0  # a reference longer than the track is not inside it
 
 
 def test_cache_checks_detect_rewritten_missing_and_unexpected_copies(verifier):
@@ -167,7 +153,7 @@ def test_cache_checks_detect_rewritten_missing_and_unexpected_copies(verifier):
 
 @pytest.fixture(scope="module")
 def rendered_a(tmp_path_factory, lesson, timeline, verifier):
-    pipeline = Pipeline(tmp_path_factory.mktemp("s02") / "media", lesson, timeline, verifier)
+    pipeline = Pipeline(tmp_path_factory.mktemp("cue_bindings") / "media", lesson, timeline, verifier)
     record, video = pipeline.render("01-a", pipeline.manifest_a)
     return pipeline, record, video
 
@@ -311,7 +297,7 @@ def test_snapshot_format_matches_the_recorded_cache_files(verifier, tmp_path):
 
     assert snapshot["cache_json_entries"] == 2
     assert set(snapshot["copies"]["x.wav"]) == {"sha256", "inode", "size", "mtime_ns", "ctime_ns"}
-    assert sys.modules["s02_verifier"] is verifier
+    assert sys.modules["cue_bindings_verifier"] is verifier
 
 
 @pytest.mark.integration
