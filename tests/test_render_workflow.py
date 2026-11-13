@@ -97,8 +97,17 @@ def runs_dir(root: Path) -> Path:
     return root / "media" / "cue_bindings" / "runs"
 
 
-def workflow_env(root: Path, **extra: str) -> dict[str, str]:
+def render_subprocess_env() -> dict[str, str]:
     env = {key: value for key, value in os.environ.items() if key not in RENAMED_VARIABLES}
+    # pytest-cov uses os.pathsep when its config was discovered implicitly. The
+    # subprocess runs from a temporary checkout, so use the original branch config.
+    if env.get("COV_CORE_CONFIG") == os.pathsep:
+        env["COV_CORE_CONFIG"] = str(ROOT / "pyproject.toml")
+    return env
+
+
+def workflow_env(root: Path, **extra: str) -> dict[str, str]:
+    env = render_subprocess_env()
     env.update(UV_PROJECT_ENVIRONMENT=str(root / ".venv"), REAL_PYTHON=sys.executable)
     env.update(VERIFIED_RECORDS=str(root.parent / "verified-records.txt"), **extra)
     return env
@@ -316,7 +325,7 @@ def test_real_render_from_a_checkout_path_with_spaces_is_recorded_and_verified(t
     shutil.copytree(ROOT / ASSETS, root / ASSETS)
     shutil.copytree(ROOT / "fixtures", root / "fixtures")
     shutil.copy2(ROOT / "fixtures" / "take_a.wav", root / "fixtures" / "my take.wav")
-    env = {key: value for key, value in os.environ.items() if key not in RENAMED_VARIABLES}
+    env = render_subprocess_env()
     env["UV_PROJECT_ENVIRONMENT"] = str(PROJECT_ENVIRONMENT)
 
     result = subprocess.run(
